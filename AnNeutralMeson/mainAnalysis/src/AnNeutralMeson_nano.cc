@@ -138,10 +138,10 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
       if (diphoton_pt < pTCutMin || diphoton_pt > pTCutMax) continue;
 
       if (require_low_vtx_cut) {
-        if (std::abs(diphoton_vertex_z) > 30) continue;
+        if (std::abs(diphoton_vertex_z) > vertex_min) continue;
       }
-      else if (require_high_vtx_cut) {
-        if (std::abs(diphoton_vertex_z) <= 30) continue;
+      if (require_high_vtx_cut) {
+        if (std::abs(diphoton_vertex_z) <= vertex_max) continue;
       }
 
       if (require_phenix_cut) {
@@ -163,14 +163,7 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
       if (!((ixfBin < nXfBins) && (ixfBin >= 0)))
         continue;
 
-      // Store invariant mass distributions
-      h_pair_mass->Fill(diphoton_mass);
-      if (iPt >= 0 && iPt < nPtBins)
-        h_pair_mass_pt[iPt]->Fill(diphoton_mass);
-      if (ietaBin >= 0 && ietaBin < nEtaBins)
-        h_pair_mass_eta[ietaBin]->Fill(diphoton_mass);
-      if (ixfBin >= 0 && ixfBin < nXfBins)
-        h_pair_mass_xf[ixfBin]->Fill(diphoton_mass);
+      int izvtxBin = FindBinBinary(diphoton_vertex_z, zvtxBins, nZvtxBins);
 
       // Select particle and region index;
       int ival = FindBinBinary(diphoton_mass, band_limits,
@@ -184,7 +177,7 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
       int iP = ival / 2 / (nRegions + 1);            // particle index
       int iR = (ival / 2 % (nRegions + 1) + 1) % 2;  // region index
 
-      // Store kinematic correlations
+      // Store QA
       if (iR == 0) {
         h_pair_meson_zvtx[iP]->Fill(diphoton_vertex_z);
         h_pair_meson_pt_eta[iP][iPt]->Fill(diphoton_eta);
@@ -193,27 +186,13 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
         h_pair_meson_eta_xf[iP][ietaBin]->Fill(diphoton_xf);
         h_pair_meson_xf_pt[iP][ixfBin]->Fill(diphoton_pt);
         h_pair_meson_xf_eta[iP][ixfBin]->Fill(diphoton_eta);
-      }
 
-      // Store pT, eta and xF values in order to compute the average value of
-      // each bin
-      if (iP != -1) 
-      {
-        if (iPt >= 0 && iPt < nPtBins) 
-        {
-          h_average_pt[iP]->Fill(iPt, diphoton_pt);
-          h_norm_pt[iP]->Fill(iPt, 1);
-        }
-        if (ietaBin >= 0 && ietaBin < nEtaBins)
-        {
-          h_average_eta[iP]->Fill(ietaBin, diphoton_eta);
-          h_norm_eta[iP]->Fill(ietaBin, 1);
-        }
-        if (ixfBin >= 0 && ixfBin < nXfBins)
-        {
-          h_average_xf[iP]->Fill(ixfBin, diphoton_xf);
-          h_norm_xf[iP]->Fill(ixfBin, 1);
-        }
+        h_pair_meson_2D_xf_pt[iP]->Fill(diphoton_xf, diphoton_pt);
+        h_pair_meson_2D_xf_eta[iP]->Fill(diphoton_xf, diphoton_eta);
+        h_pair_meson_2D_xf_zvtx[iP]->Fill(diphoton_xf, diphoton_vertex_z);
+        h_pair_meson_2D_pt_eta[iP]->Fill(diphoton_pt, diphoton_eta);
+        h_pair_meson_2D_pt_zvtx[iP]->Fill(diphoton_pt, diphoton_vertex_z);
+        h_pair_meson_2D_eta_zvtx[iP]->Fill(diphoton_eta, diphoton_vertex_z);
       }
       
       // Compute yield
@@ -233,6 +212,38 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
 
         if (require_low_xf_cut) {
           if (ixfBinRelative >= 6) continue; // i.e. last most forward pT bins 6 and 7 -> xF > 0.035
+        }
+
+        // Store symmetrized invariant mass distributions
+        h_pair_mass->Fill(diphoton_mass);
+        if (iPt >= 0 && iPt < nPtBins && beamDirection[iB] > 0)
+          h_pair_mass_pt[iPt]->Fill(diphoton_mass);
+        if (izvtxBin >= 0 && izvtxBin < nZvtxBins && beamDirection[iB] > 0)
+          h_pair_mass_zvtx[izvtxBin]->Fill(diphoton_mass);
+        if (ietaBinRelative >= 0 && ietaBinRelative < nEtaBins)
+          h_pair_mass_eta[ietaBinRelative]->Fill(diphoton_mass);
+        if (ixfBinRelative >= 0 && ixfBinRelative < nXfBins)
+          h_pair_mass_xf[ixfBinRelative]->Fill(diphoton_mass);
+
+        // Store pT, eta and xF values in order to compute the average value of
+        // each bin
+        if (iP != -1 && iR == 0) // Really the signal band
+        {
+          if (iPt >= 0 && iPt < nPtBins) 
+          {
+            h_average_pt[iP]->Fill(iPt, diphoton_pt);
+            h_norm_pt[iP]->Fill(iPt, 1);
+          }
+          if (ietaBinRelative >= 0 && ietaBinRelative < nEtaBins)
+          {
+            h_average_eta[iP]->Fill(ietaBinRelative, (beamDirection[iB] > 0 ? diphoton_eta : -diphoton_eta));
+            h_norm_eta[iP]->Fill(ietaBinRelative, 1);
+          }
+          if (ixfBinRelative >= 0 && ixfBinRelative < nXfBins)
+          {
+            h_average_xf[iP]->Fill(ixfBinRelative, (beamDirection[iB] > 0 ? diphoton_xf : -diphoton_xf));
+            h_norm_xf[iP]->Fill(ixfBinRelative, 1);
+          }
         }
 
         // phi global to phi yellow/blue
@@ -351,6 +362,20 @@ void AnNeutralMeson_nano::BookHistos(const std::string &outputfilename)
                  h_pair_mass_title.str().c_str(), 500, 0, 1);
   }
 
+  for (int izvtxBin = 0; izvtxBin < nZvtxBins; izvtxBin++)
+  {
+    std::stringstream h_pair_mass_name;
+    h_pair_mass_name << std::fixed << std::setprecision(0) << "h_pair_mass_zvtx_"
+                     << izvtxBin;
+    std::stringstream h_pair_mass_title;
+    h_pair_mass_title << std::fixed << std::setprecision(2) << "diphoton mass ["
+                      << zvtxBins[izvtxBin] << " < x_{F} < " << zvtxBins[izvtxBin + 1]
+                      << "];M_{#gamma#gamma};counts";
+    h_pair_mass_zvtx[izvtxBin] =
+        new TH1F(h_pair_mass_name.str().c_str(),
+                 h_pair_mass_title.str().c_str(), 500, 0, 1);
+  }
+
   // Histogram for the average bin value
   h_average_pt[0] = new TH1F(
       "h_average_pt_pi0",
@@ -404,6 +429,64 @@ void AnNeutralMeson_nano::BookHistos(const std::string &outputfilename)
       h_name.str().c_str(),
       ";z_{vtx} [cm]; Counts / [2 cm]",
       200, -200, 200);
+  }
+
+  for (int iP = 0; iP < 2; iP++) {
+    {
+      std::stringstream h_name;
+      h_name << "h_pair_" << particle[iP] << "_2D_xf_pt";
+      h_pair_meson_2D_xf_pt[iP] = new TH2F(
+        h_name.str().c_str(),
+        ";x_{F}; p_{T} [GeV]",
+        200, -0.2, 0.2,
+        200, 0.0, 20.0);
+    }
+    {
+      std::stringstream h_name;
+      h_name << "h_pair_" << particle[iP] << "_2D_xf_eta";
+      h_pair_meson_2D_xf_eta[iP] = new TH2F(
+        h_name.str().c_str(),
+        ";x_{F}; #eta",
+        200, -0.2, 0.2,
+        200, -2.0, 2.0);
+    }
+    {
+      std::stringstream h_name;
+      h_name << "h_pair_" << particle[iP] << "_2D_xf_zvtx";
+      h_pair_meson_2D_xf_zvtx[iP] = new TH2F(
+        h_name.str().c_str(),
+        ";x_{F}; z_{vtx} [cm]",
+        200, -0.2, 0.2,
+        200, -200, 200);
+    }
+    {
+      std::stringstream h_name;
+      h_name << "h_pair_" << particle[iP] << "_2D_pt_eta";
+      h_pair_meson_2D_pt_eta[iP] = new TH2F(
+        h_name.str().c_str(),
+        ";p_{T} [GeV]; #eta",
+        200, 0.0, 20.0,
+        200, -2.0, 2.0);
+    }
+    {
+      std::stringstream h_name;
+      h_name << "h_pair_" << particle[iP] << "_2D_pt_zvtx";
+      h_pair_meson_2D_pt_zvtx[iP] = new TH2F(
+        h_name.str().c_str(),
+        ";p_{T} [GeV]; z_{vtx} [cm]",
+        200, 0.0, 20.0,
+        200, -200, 200);
+    }
+    {
+      std::stringstream h_name;
+      h_name << "h_pair_" << particle[iP] << "_2D_eta_zvtx";
+      h_pair_meson_2D_eta_zvtx[iP] = new TH2F(
+        h_name.str().c_str(),
+        ";#eta; z_{vtx} [cm]",
+        200, -2.0, 2.0,
+        200, -200, 200);
+    }
+    
   }
   
   // Kinematic relation pT vs eta vs xF
