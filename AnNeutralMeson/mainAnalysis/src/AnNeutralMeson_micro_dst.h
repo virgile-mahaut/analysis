@@ -97,6 +97,25 @@ class AnNeutralMeson_micro_dst : public SubsysReco
                                    const ROOT::Math::PtEtaPhiMVector& photon2,
                                    const ROOT::Math::PtEtaPhiMVector& diphoton);
 
+  void set_sigma_number(const float val) {
+    sigma_number = val;
+    const int N = nParticles * (nRegions + 1) * 2;
+    switch(sigma_number) {
+    case 1:
+      for (int j = 0; j < N; j++) {
+        band_limits[j] = band_limits_15[j];
+      }
+    case 2:
+      for (int j = 0; j < N; j++) {
+        band_limits[j] = band_limits_2[j];
+      }
+    case 3:
+      for (int j = 0; j < N; j++) {
+        band_limits[j] = band_limits_3[j];
+      }
+    }
+  }
+
   void event_mixing_mbd(PHCompositeNode *topNode);
 
   void event_mixing_photon();
@@ -232,11 +251,11 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   static constexpr int nPtBins = 9;
   const float pTBins[nPtBins + 1] = {1, 2, 3, 4, 5, 6, 7, 8, 10, 20};
 
-  // New eta binning -> more equally distributed
+  // New binning -> more equally distributed
   static constexpr int nEtaBins = 8;
   const float etaBins[nEtaBins + 1] = {-2.00, -1.05, -0.86, -0.61, 0.0, 0.61, 0.86, 1.05, 2.0};
 
-  // New xF binning -> more equally distributed
+  // New binning -> more equally distributed
   static constexpr int nXfBins = 8;
   const float xfBins[nXfBins + 1] = {-0.200, -0.048, -0.035, -0.022, 0.0, 0.022, 0.035, 0.048, 0.200};
   
@@ -261,7 +280,32 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   int crossingshift;
   int beamspinpat[nBeams][nBunches];
 
-  // Define the regions (in invariant mass) for pi0/eta peak/side
+  // Define the regions (in invariant mass) for pi0/eta peak/side (at 3 sigma)
+  int sigma_number = 3;
+  float band_limits_3[nParticles * (nRegions + 1) * 2] =
+    {0.030, 0.070, // pi0 left side invariant mass range (in GeV/c^2)
+     0.080, 0.199, // pi0 peak
+     0.209, 0.249, // pi0 right side
+     0.257, 0.371, // eta left side
+     0.399,0.739, // eta peak
+     0.767, 0.880}; // eta right side
+  // 2 sigma window
+  float band_limits_2[nParticles * (nRegions + 1) * 2] =
+    {0.030, 0.070, // pi0 left side invariant mass range (in GeV/c^2)
+     0.100, 0.180, // pi0 peak
+     0.209, 0.249, // pi0 right side
+     0.257, 0.371, // eta left side
+     0.456,0.683, // eta peak
+     0.767, 0.880}; // eta right side
+  // 1.5 sigma window
+  float band_limits_15[nParticles * (nRegions + 1) * 2] =
+    {0.030, 0.070, // pi0 left side invariant mass range (in GeV/c^2)
+     0.110, 0.170, // pi0 peak
+     0.209, 0.249, // pi0 right side
+     0.257, 0.371, // eta left side
+     0.484,0.654, // eta peak
+     0.767, 0.880}; // eta right side
+  // Default window (defined to 3 sigma)
   float band_limits[nParticles * (nRegions + 1) * 2] =
     {0.030, 0.070, // pi0 left side invariant mass range (in GeV/c^2)
      0.080, 0.199, // pi0 peak
@@ -269,6 +313,7 @@ class AnNeutralMeson_micro_dst : public SubsysReco
      0.257, 0.371, // eta left side
      0.399,0.739, // eta peak
      0.767, 0.880}; // eta right side
+  
 
   // List of cuts
 
