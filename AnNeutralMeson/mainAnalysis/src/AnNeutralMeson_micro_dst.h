@@ -24,10 +24,13 @@
 class PHCompositeNode;
 class TFile;
 class TTree;
+class TRandom3;
 class TH1;
 class TH1F;
 class TH1I;
 class TH2F;
+class TGraph;
+class TF1;
 class LorentzVector;
 
 void monitorMemoryUsage(const std::string& label="");
@@ -39,7 +42,8 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   AnNeutralMeson_micro_dst(const std::string &name = "AnNeutralMeson_micro_dst",
                            const int runnb = 48746,
                            const std::string &outputfilename = "analysis_per_run/analysis_48746.root",
-                           const std::string &outputfiletreename = "analysis_per_run/diphoton_minimal_48746.root");
+                           const std::string &outputfiletreename = "analysis_per_run/diphoton_minimal_48746.root",
+                           const int seednb = 0);
 
   //! destructor
   virtual ~AnNeutralMeson_micro_dst();
@@ -97,6 +101,12 @@ class AnNeutralMeson_micro_dst : public SubsysReco
                                    const ROOT::Math::PtEtaPhiMVector& photon2,
                                    const ROOT::Math::PtEtaPhiMVector& diphoton);
 
+  void smear_photon(float& eta, float& phi, float& ecore);
+
+  void event_mixing_mbd(PHCompositeNode *topNode);
+
+  void event_mixing_photon();
+
   void set_sigma_number(const float val) {
     sigma_number = val;
     const int N = nParticles * (nRegions + 1) * 2;
@@ -116,9 +126,13 @@ class AnNeutralMeson_micro_dst : public SubsysReco
     }
   }
 
-  void event_mixing_mbd(PHCompositeNode *topNode);
-
-  void event_mixing_photon();
+  void set_smearing(bool val, bool val_ecore = true, bool val_eta = true, bool val_phi = true)
+  {
+    do_smearing = val;
+    do_smear_ecore = val_ecore;
+    do_smear_eta = val_eta;
+    do_smear_phi = val_phi;
+  }
 
   void set_event_mixing(bool use) { use_event_mixing = use; }
 
@@ -177,7 +191,12 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   //! Check trigger matching
   bool trigger_matching(const ROOT::Math::PtEtaPhiMVector&, const ROOT::Math::PtEtaPhiMVector&, const ROOT::Math::PtEtaPhiMVector&);
 
+  
+
   bool startswith(const std::string&, const std::string&);
+
+  //! Gives the angle value between -pi and + pi
+  void WrapAngle(float& phi);
 
   //! Absolute angle difference with wrapping
   float WrapAngleDifference(const float& phi1, const float& phi2);
@@ -220,12 +239,34 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   float vertex_z;
   int cluster_number;
 
+  // Smearing info for EMCal Resolution
+  bool do_smearing = false;
+  bool do_smear_ecore = false;
+  bool do_smear_eta = false;
+  bool do_smear_phi = false;
+  TRandom3 *rnd = nullptr;
+  //! Quadrature diff graphs from function_compare_wide.root; x = E (GeV), Eval = width for smearing)
+  static constexpr int nDifferences = 3;
+  std::array<TF1*, nDifferences> f_energy_smear{};
+  std::array<TF1*, nDifferences> f_position_smear{};
+
+  // QA (Check that kinematics are actually smeared)
+  TH1F *h_smear_eta = nullptr;
+  TH1F *h_smear_phi = nullptr;
+  TH1F *h_smear_E = nullptr;
+  TH2F *h_smear_E_deta = nullptr;
+  TH2F *h_smear_E_dphi = nullptr;
+  TH2F *h_smear_E_dE = nullptr;
+
   // Output histogram file
   std::string outfilename;
   std::string outtreename;
   TFile *outfile = nullptr;
   TFile *outfile_tree = nullptr;
   bool store_tree = false;
+
+  // Seed Number (for smearing)
+  int seednumber;
 
   // Simplified output tree (for nano analysis)
   int diphoton_bunchnumber;
@@ -409,6 +450,7 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   TH1F *h_photon_pt;
   TH1F *h_photon_zvtx;
   TH2F *h_photon_eta_phi;
+  TH2F *h_photon_eta_phi_bin[nPtBins] = {nullptr};
   TH2F *h_photon_eta_pt;
   TH2F *h_photon_eta_zvtx;
   TH2F *h_photon_phi_pt;
@@ -419,6 +461,7 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   TH1F *h_selected_photon_pt;
   TH1F *h_selected_photon_zvtx;
   TH2F *h_selected_photon_eta_phi;
+  TH2F *h_selected_photon_eta_phi_bin[nPtBins] = {nullptr};
   TH2F *h_selected_photon_eta_pt;
   TH2F *h_selected_photon_eta_zvtx;
   TH2F *h_selected_photon_phi_pt;

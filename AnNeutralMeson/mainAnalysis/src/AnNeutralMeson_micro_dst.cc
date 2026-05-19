@@ -33,6 +33,9 @@
 #include <Math/Rotation3D.h>
 #include <Math/AxisAngle.h>
 #include <TFile.h>
+#include <TRandom3.h>
+#include <TGraph.h>
+#include <TF1.h>
 #include <TH1F.h>
 #include <TH2F.h>
 #include <TTree.h>
@@ -54,11 +57,13 @@ void monitorMemoryUsage(const std::string &label)
 
 AnNeutralMeson_micro_dst::AnNeutralMeson_micro_dst(const std::string &name, const int runnb,
                                                    const std::string &outputfilename,
-                                                   const std::string &outputfiletreename)
+                                                   const std::string &outputfiletreename,
+                                                   const int seednb)
   : SubsysReco(name)
   , runnumber(runnb)
   , outfilename(outputfilename)
   , outtreename(outputfiletreename)
+  , seednumber(seednb)
 {
 }
 
@@ -70,6 +75,83 @@ AnNeutralMeson_micro_dst::~AnNeutralMeson_micro_dst()
 
 int AnNeutralMeson_micro_dst::Init(PHCompositeNode *)
 {
+  if (do_smearing)
+  {
+    rnd = new TRandom3(seednumber * 1e5 + runnumber);
+    const std::string kSmearParFile =
+      "/sphenix/u/virgilemahaut/fromBlair/function_compare_wide.root";
+    TFile* smear_fin = TFile::Open(kSmearParFile.c_str(), "READ");
+    if (!smear_fin || smear_fin->IsZombie())
+    {
+      std::cout << Name() << "::Init - WARNING: could not open photon smearing parameter file "
+                << kSmearParFile << std::endl;
+    }
+    else
+  {
+      static const std::array<const char*, 3> kEnergyFuncNames = {
+          "f_energy_difference_global_minimum", "f_energy_difference_cE_0p08", "f_energy_difference_cE_0p05"};
+      static const std::array<const char*, 3> kPositionFuncNames = {"f_position_difference_global_minimum",
+                                                                     "f_position_difference_cE_0p08",
+                                                                     "f_position_difference_cE_0p05"};
+      static const std::array<const char*, 3> kEnergyFuncNamesLegacy = {
+          "g_energy_difference_global_minimum", "g_energy_difference_cE_0p08", "g_energy_difference_cE_0p05"};
+      static const std::array<const char*, 3> kPositionFuncNamesLegacy = {
+          "g_position_difference_global_minimum", "g_position_difference_cE_0p08", "g_position_difference_cE_0p05"};
+      for (int k = 0; k < 3; ++k)
+      {
+        TF1* fe = dynamic_cast<TF1*>(smear_fin->Get(kEnergyFuncNames[k]));
+        if (!fe)
+        {
+          fe = dynamic_cast<TF1*>(smear_fin->Get(kEnergyFuncNamesLegacy[k]));
+        }
+        if (!fe && k == 0)
+        {
+          fe = dynamic_cast<TF1*>(smear_fin->Get("f_energy_difference"));
+        }
+        if (!fe && k == 0)
+        {
+          fe = dynamic_cast<TF1*>(smear_fin->Get("g_energy_difference"));
+        }
+        if (!fe)
+        {
+          std::cout << Name() << "::Init - WARNING: energy smear function " << kEnergyFuncNames[k]
+                    << " not found in " << kSmearParFile << std::endl;
+        }
+        else
+        {
+          f_energy_smear[k] =
+              static_cast<TF1*>(fe->Clone(("f_energy_smear" + std::to_string(k) + "_clone").c_str()));
+        }
+
+        TF1* fp = dynamic_cast<TF1*>(smear_fin->Get(kPositionFuncNames[k]));
+        if (!fp)
+        {
+          fp = dynamic_cast<TF1*>(smear_fin->Get(kPositionFuncNamesLegacy[k]));
+        }
+        if (!fp && k == 0)
+        {
+          fp = dynamic_cast<TF1*>(smear_fin->Get("f_position_difference"));
+        }
+        if (!fp && k == 0)
+        {
+          fp = dynamic_cast<TF1*>(smear_fin->Get("g_position_difference"));
+        }
+        if (!fp)
+        {
+          std::cout << Name() << "::Init - WARNING: position smear function " << kPositionFuncNames[k]
+                    << " not found in " << kSmearParFile << std::endl;
+        }
+        else
+        {
+          f_position_smear[k] =
+              static_cast<TF1*>(fp->Clone(("f_position_smear" + std::to_string(k) + "_clone").c_str()));
+        }
+      }
+      smear_fin->Close();
+      delete smear_fin;
+    }
+  }
+  
   // Book tree (used for nano analysis)
   if (store_tree)
   {
@@ -127,6 +209,41 @@ int AnNeutralMeson_micro_dst::Init(PHCompositeNode *)
                                                  ";case;Counts",
                                                  4, 1, 4);
     }
+  }
+
+  if (do_smearing) {
+    h_smear_E = new TH1F(
+      "h_smear_E",
+      "; E_{Smeared}/E_{Nominal}; Counts",
+      100, 0.5, 1.5);
+
+    h_smear_eta = new TH1F(
+      "h_smear_eta",
+      "; #eta_{Smeared}-#eta_{Nominal}; Counts",
+      100, -0.025, 0.025);
+
+    h_smear_phi = new TH1F(
+      "h_smear_phi",
+      "; #phi_{Smeared}-#phi_{Nominal}; Counts",
+      100, -0.025, 0.025);
+
+    h_smear_E_dE = new TH2F(
+      "h_smear_E_dE",
+      "; E [GeV]; E_{Smeared}/E_{Nominal}",
+      100, 0, 10,
+      100, 0.5, 1.5);
+
+    h_smear_E_deta = new TH2F(
+      "h_smear_E_deta",
+      "; E [GeV]; #eta_{Smeared}-#eta_{Nominal}",
+      100, 0, 10,
+      100, -0.025, 0.025);
+
+    h_smear_E_dphi = new TH2F(
+      "h_smear_E_dphi",
+      "; E [GeV]; #phi_{Smeared}-#phi_{Nominal}",
+      100, 0, 10,
+      100, -0.025, 0.025);
   }
   
   if (store_qa)
@@ -288,6 +405,17 @@ int AnNeutralMeson_micro_dst::Init(PHCompositeNode *)
       ";p_{T} [GeV];vertex z [cm]; counts",
       200, 0, 20, 200, -200, 200);
 
+    for (int iPt = 0; iPt < nPtBins; iPt++) {
+      h_photon_eta_phi_bin[iPt] = new TH2F(
+       ("h_photon_eta_phi_bin_" + std::to_string(iPt)).c_str(),
+       ";#eta; #phi [rad]",
+       200, -2.0, 2.0, 128, -M_PI, M_PI);
+      h_photon_phi_pt = new TH2F(
+        ("h_photon_phi_pt_bin_" + std::to_string(iPt)).c_str(),
+        ";#phi [rad];p_{T} [GeV]; counts",
+        128, -M_PI, M_PI, 200, 0, 20);
+    }
+    
     h_selected_photon_eta = new TH1F(
       "h_selected_photon_eta",
       ";#eta [rad];counts",
@@ -329,6 +457,17 @@ int AnNeutralMeson_micro_dst::Init(PHCompositeNode *)
       "h_selected_photon_pt_zvtx",
       ";p_{T} [GeV];vertex z [cm]; counts",
       200, 0, 20, 200, -200, 200);
+
+    for (int iPt = 0; iPt < nPtBins; iPt++) {
+      h_selected_photon_eta_phi_bin[iPt] = new TH2F(
+       ("h_selected_photon_eta_phi_bin_" + std::to_string(iPt)).c_str(),
+       ";#eta; #phi [rad]",
+       200, -2.0, 2.0, 128, -M_PI, M_PI);
+      h_selected_photon_phi_pt = new TH2F(
+        ("h_selected_photon_phi_pt_bin_" + std::to_string(iPt)).c_str(),
+        ";#phi [rad];p_{T} [GeV]; counts",
+        128, -M_PI, M_PI, 200, 0, 20);
+    }
 
     // diphoton QA
     h_pair_eta = new TH1F(
@@ -1230,6 +1369,23 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
     float phi = smallcluster->get_phi();
     float chi2 = smallcluster->get_chi2();
     float ecore = smallcluster->get_ecore();
+
+    // Smear the photon's kinematics based on the EMCal given resolution
+    if (do_smearing)
+    {
+      float eta_nominal = eta;
+      float phi_nominal = phi;
+      float E_nominal = ecore;
+      smear_photon(eta, phi, ecore);
+      
+      h_smear_E->Fill(ecore/E_nominal);
+      h_smear_eta->Fill(eta - eta_nominal);
+      h_smear_phi->Fill(phi - phi_nominal);
+
+      h_smear_E_dE->Fill(E_nominal, ecore/E_nominal);
+      h_smear_E_deta->Fill(E_nominal, eta - eta_nominal);
+      h_smear_E_dphi->Fill(E_nominal, phi - phi_nominal);
+    }
     
     if (chi2 <= chi2_cuts[0] &&
         ecore >= ecore_cuts[0])
@@ -1242,6 +1398,10 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
         h_photon_pt->Fill(photon.Pt());
         h_photon_zvtx->Fill(vertex_z);
         h_photon_eta_phi->Fill(photon.Eta(), photon.Phi());
+        int iPt = FindBinBinary(diphoton_pt, pTBins, nPtBins + 1);
+        if (!(iPt < 0 || iPt >= nPtBins)) {
+          h_photon_eta_phi_bin[iPt]->Fill(photon.Eta(), photon.Phi());
+        }
         h_photon_eta_pt->Fill(photon.Eta(), photon.Pt());
         h_photon_eta_zvtx->Fill(photon.Eta(), vertex_z);
         h_photon_phi_pt->Fill(photon.Phi(), photon.Pt());
@@ -1389,6 +1549,12 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
         h_selected_photon_phi_pt->Fill(photon2.Phi(), photon2.Pt());
         h_selected_photon_phi_zvtx->Fill(photon2.Phi(), vertex_z);
         h_selected_photon_pt_zvtx->Fill(photon2.Pt(), vertex_z);
+
+        int iPt = FindBinBinary(diphoton_pt, pTBins, nPtBins + 1);
+        if (!(iPt < 0 || iPt >= nPtBins)) {
+          h_selected_photon_eta_phi_bin[iPt]->Fill(photon1.Eta(), photon1.Phi());
+          h_selected_photon_eta_phi_bin[iPt]->Fill(photon2.Eta(), photon2.Phi());
+        }
         
         h_pair_eta->Fill(diphoton_eta);
         h_pair_phi->Fill(diphoton_phi);
@@ -1606,10 +1772,7 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
 
         phi_shift = (iB == 0 ? M_PI / 2 : -M_PI / 2);
         phi_beam = diphoton_phi + phi_shift;  // phi global to phi yellow/blue
-        if (phi_beam < -M_PI)
-          phi_beam += 2 * M_PI;
-        else if (phi_beam > M_PI)
-          phi_beam -= 2 * M_PI;
+        WrapAngle(phi_beam);
         if (iR != -1 && iP != -1)
         {
           if (beamspinpat[iB][(crossingshift + diphoton_bunchnumber) % nBunches] == 1)
@@ -1998,6 +2161,55 @@ bool AnNeutralMeson_micro_dst::trigger_efficiency_matching(const ROOT::Math::PtE
   return true;
 }
 
+void AnNeutralMeson_micro_dst::smear_photon(float& eta,
+                                            float& phi,
+                                            float& ecore)
+{
+  // Defaults if parameter file missing or Eval invalid
+  float E_res = 0.08f;
+  float P_res = 0.0001f;
+
+  std::vector<float> E_vector;
+  std::vector<float> P_vector;
+  E_vector.reserve(3);
+  P_vector.reserve(3);
+  
+  for (int smear_idx = 0; smear_idx < nDifferences; smear_idx++)
+  {
+    const double se = f_energy_smear[smear_idx]->Eval(ecore);
+    if (std::isfinite(se) && se > 0.0)
+    {
+      E_vector.push_back(static_cast<float>(se));
+    }
+
+    const double sp = f_position_smear[smear_idx]->Eval(ecore);
+    if (std::isfinite(sp) && sp > 0.0)
+    {
+      P_vector.push_back(static_cast<float>(sp));
+    }
+  }
+  if (!E_vector.empty())
+  {
+    E_res = *std::max_element(E_vector.begin(), E_vector.end());
+  }
+  if (!P_vector.empty())
+  {
+    P_res = *std::max_element(P_vector.begin(), P_vector.end());
+  }
+
+  float smeared_energy = std::max(0.0, rnd->Gaus(ecore, ecore * E_res));
+  float smeared_phi = rnd->Gaus(phi, P_res);
+  WrapAngle(smeared_phi);
+  float smeared_eta = rnd->Gaus(eta, P_res);
+
+  if (do_smear_eta) 
+    eta = smeared_eta;
+  if (do_smear_phi)
+    phi = smeared_phi;
+  if (do_smear_ecore)
+    ecore = smeared_energy;
+}
+
 void AnNeutralMeson_micro_dst::event_mixing_mbd(PHCompositeNode *topNode)
 {
   
@@ -2203,6 +2415,16 @@ void AnNeutralMeson_micro_dst::event_mixing_photon()
 bool AnNeutralMeson_micro_dst::startswith(const std::string& str, const std::string& cmp)
 {
   return str.compare(0, cmp.length(), cmp) == 0;
+}
+
+void AnNeutralMeson_micro_dst::WrapAngle(float& phi)
+{
+  while (phi > static_cast<float>(M_PI)) {
+    phi -= 2.0 * M_PI;
+  }
+  while (phi < - static_cast<float>(M_PI)) {
+    phi += 2.0 * M_PI;
+  }
 }
 
 float AnNeutralMeson_micro_dst::WrapAngleDifference(const float& phi1, const float& phi2)
