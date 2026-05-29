@@ -170,15 +170,16 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
                                nParticles * (nRegions + 1) * 2);
       
       // Ignore any diphoton which is not within the side band or the peak band
-      if (ival < 0 || ival % 2 == 1)
+      int iP = -1;            // particle index
+      int iR = -1;  // region index
+      if (!(ival < 0 || ival % 2 == 1))
       {
-        continue;
+        iP = ival / 2 / (nRegions + 1);            // particle index
+        iR = (ival / 2 % (nRegions + 1) + 1) % 2;  // region index
       }
-      int iP = ival / 2 / (nRegions + 1);            // particle index
-      int iR = (ival / 2 % (nRegions + 1) + 1) % 2;  // region index
 
       // Store QA
-      if (iR == 0) {
+      if (iR == 0 && iP != -1) {
         h_pair_meson_zvtx[iP]->Fill(diphoton_vertex_z);
         h_pair_meson_pt_eta[iP][iPt]->Fill(diphoton_eta);
         h_pair_meson_pt_xf[iP][iPt]->Fill(diphoton_xf);
@@ -215,6 +216,7 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
         }
 
         // Store symmetrized invariant mass distributions
+        // Only eta and xF distributions are symmetrized!
         h_pair_mass->Fill(diphoton_mass);
         if (iPt >= 0 && iPt < nPtBins && beamDirection[iB] > 0)
           h_pair_mass_pt[iPt]->Fill(diphoton_mass);
@@ -225,11 +227,13 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
         if (ixfBinRelative >= 0 && ixfBinRelative < nXfBins)
           h_pair_mass_xf[ixfBinRelative]->Fill(diphoton_mass);
 
+        if (iP == -1 || iR == -1) continue;
+
         // Store pT, eta and xF values in order to compute the average value of
         // each bin
         if (iP != -1 && iR == 0) // Really the signal band
         {
-          if (iPt >= 0 && iPt < nPtBins) 
+          if (iPt >= 0 && iPt < nPtBins)
           {
             h_average_pt[iP]->Fill(iPt, diphoton_pt);
             h_norm_pt[iP]->Fill(iPt, 1);

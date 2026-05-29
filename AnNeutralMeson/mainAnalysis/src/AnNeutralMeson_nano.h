@@ -61,15 +61,23 @@ class AnNeutralMeson_nano : public SubsysReco
       for (int j = 0; j < N; j++) {
         band_limits[j] = band_limits_15[j];
       }
+      break;
     case 2:
       for (int j = 0; j < N; j++) {
         band_limits[j] = band_limits_2[j];
       }
+      break;
     case 3:
       for (int j = 0; j < N; j++) {
         band_limits[j] = band_limits_3[j];
       }
+      break;
     }
+    std::cout << "band_limits = ";
+    for (int j = 0; j < N; j++) {
+      std::cout << band_limits[j] << " ";
+    }
+    std::cout << std::endl;
   }
 
   void shuffle_spin_pattern(const int irun);
