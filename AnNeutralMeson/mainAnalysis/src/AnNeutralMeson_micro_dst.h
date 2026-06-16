@@ -20,6 +20,9 @@
 // Trigger emulator
 #include <triggeremulator/TriggerTile.h>
 
+// MBD info
+#include <pileupfilter/MBDSmallInfo.h>
+
 // Forward declarations
 class PHCompositeNode;
 class TFile;
@@ -52,7 +55,7 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   int Init(PHCompositeNode *);
 
   int InitRun(PHCompositeNode *);
-
+  
   //! event processing method
   int process_event(PHCompositeNode *);
 
@@ -115,14 +118,17 @@ class AnNeutralMeson_micro_dst : public SubsysReco
       for (int j = 0; j < N; j++) {
         band_limits[j] = band_limits_15[j];
       }
+      break;
     case 2:
       for (int j = 0; j < N; j++) {
         band_limits[j] = band_limits_2[j];
       }
+      break;
     case 3:
       for (int j = 0; j < N; j++) {
         band_limits[j] = band_limits_3[j];
       }
+      break;
     }
   }
 
@@ -134,11 +140,57 @@ class AnNeutralMeson_micro_dst : public SubsysReco
     do_smear_phi = val_phi;
   }
 
+  void set_scale_variation(int scale_variation = -1, float scale_diff=2.6)
+  {
+    m_scale_diff = scale_diff;
+    if (scale_variation == 1) {
+      do_small_scale = true;
+      do_high_scale = false;
+      std::cout << "Reduce energy scale by 2.6%" << std::endl;
+    }
+    else if (scale_variation == 2) {
+      do_small_scale = false;
+      do_high_scale = true;
+      std::cout << "Increase energy scale by 2.6%" << std::endl;
+    }
+    else {
+      do_small_scale = false;
+      do_high_scale = false;
+      std::cout << "Apply no energy scale variation" << std::endl;
+    }
+  }
+
   void set_event_mixing(bool use) { use_event_mixing = use; }
 
-  void set_mbd_trigger_bit_requirement(bool require) { require_mbd_trigger_bit = require; }
+  void set_mbd_trigger_bit_requirement(bool require, int bit_index = -1)
+  {
+    require_mbd_trigger_bit = require;
 
-  void set_photon_trigger_bit_requirement(bool require) { require_photon_trigger_bit = require; }
+    if (bit_index == 1) {
+      require_mbd_any_vtx = require;
+    }
+    else if (bit_index == 2) {
+      require_mbd_vtx_10 = require;
+    }
+  }
+
+  void set_photon_trigger_bit_requirement(bool require, int bit_index = -1)
+  {
+    require_photon_trigger_bit = require;
+
+    if (bit_index == 1) {
+      require_photon_3_any_vtx = require;
+    }
+    else if (bit_index == 2) {
+      require_photon_3_vtx_10 = require;
+    }
+    else if (bit_index == 3) {
+      require_photon_4_any_vtx = require;
+    }
+    else if (bit_index == 4) {
+      require_photon_4_vtx_10 = require;
+    }
+  }
 
   void set_photon_trigger_emulator_matching_requirement(bool require) { require_emulator_matching = require; }
 
@@ -154,6 +206,17 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   }
 
   void set_vertex_max(float vtx) { vertex_max = vtx; }
+
+  //! Apply a cluster mask in the (eta, phi) phase space:
+  void set_custom_mask(bool mask, float z_min_val=-1, float z_max_val=-1,
+                       float phi_min_val=-1, float phi_max_val=-1)
+  {
+    do_custom_mask = mask;
+    _z_min = z_min_val;
+    _z_max = z_max_val;
+    _phi_min = phi_min_val;
+    _phi_max = phi_max_val;
+  }
 
   //! Set cluster level chi2 cut. Only first cut is applied (the rest is for QA)
   void set_chi2cut(const std::vector<float>& chi2) { chi2_cuts = chi2; n_chi2_cuts = chi2.size(); } 
@@ -191,7 +254,15 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   //! Check trigger matching
   bool trigger_matching(const ROOT::Math::PtEtaPhiMVector&, const ROOT::Math::PtEtaPhiMVector&, const ROOT::Math::PtEtaPhiMVector&);
 
-  
+  //! MBD RMS time cut for in-time pileup
+  void set_mbd_timing_cut(bool decision, float rms_min, float rms_max)
+  {
+    require_mbd_timing = decision;
+    mbd_rms_cut_min = rms_min;
+    mbd_rms_cut_max = rms_max;
+  }
+
+  bool mbd_timing_cut();
 
   bool startswith(const std::string&, const std::string&);
 
@@ -249,6 +320,11 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   static constexpr int nDifferences = 3;
   std::array<TF1*, nDifferences> f_energy_smear{};
   std::array<TF1*, nDifferences> f_position_smear{};
+
+  // Energy scale variation
+  float m_scale_diff = 2.6; // %
+  bool do_high_scale = false;
+  bool do_small_scale = false;
 
   // QA (Check that kinematics are actually smeared)
   TH1F *h_smear_eta = nullptr;
@@ -358,16 +434,34 @@ class AnNeutralMeson_micro_dst : public SubsysReco
 
   // List of cuts
 
+  // Custom mask
+  bool do_custom_mask = false;
+  float _z_min = -1;
+  float _z_max = -1;
+  float _phi_min = -1;
+  float _phi_max = -1;
+
   // Event level cuts (aside from trigger)
-  float vertex_max = 1000; // cm
+  float vertex_max = 150; // cm
 
   // Activated trigger bit
   bool require_mbd_trigger_bit = false;
+  bool require_mbd_any_vtx = false;
+  bool require_mbd_vtx_10 = false;
   bool trigger_mbd_any_vtx = false; // Event with MinBias trigger (no vtx requirement)
   bool trigger_mbd_vtx_10 = false; // Event with MinBias trigger (|vertex| < 10 cm requirement)
-  bool mbd_trigger_bit_event = false;
-  bool require_photon_trigger_bit = false;
   bool trigger_mbd = false; // Event with MinBias detector trigger (scaled)
+  bool mbd_trigger_bit_event = false;
+
+  bool require_photon_trigger_bit = false;
+  bool require_photon_3_any_vtx = false;
+  bool require_photon_3_vtx_10 = false;
+  bool require_photon_4_any_vtx = false;
+  bool require_photon_4_vtx_10 = false;
+  bool trigger_mbd_photon_3_any_vtx = false;
+  bool trigger_mbd_photon_4_any_vtx = false;
+  bool trigger_mbd_photon_3_vtx_10 = false;
+  bool trigger_mbd_photon_4_vtx_10 = false;
   bool trigger_mbd_photon_3 = false; // Event with photon 3 GeV trigger (scaled)
   bool trigger_mbd_photon_4 = false; // Event with photon 4 GeV trigger (scaled)
   bool photon_trigger_bit_event = false;
@@ -440,6 +534,7 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   TH1I *h_efficiency_x_matching_pt[nPtBins] = {nullptr};
 
   // Misc QA histograms
+  TH1I *h_cluster_multiplicity;
   TH1I *h_count_diphoton_nomatch;
   TH1F *h_event_zvtx;
   TH1F *h_triggered_event_zvtx;
@@ -451,6 +546,7 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   TH1F *h_photon_zvtx;
   TH2F *h_photon_eta_phi;
   TH2F *h_photon_eta_phi_bin[nPtBins] = {nullptr};
+  TH2F *h_photon_z_phi_bin[nPtBins] = {nullptr};
   TH2F *h_photon_eta_pt;
   TH2F *h_photon_eta_zvtx;
   TH2F *h_photon_phi_pt;
@@ -462,6 +558,7 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   TH1F *h_selected_photon_zvtx;
   TH2F *h_selected_photon_eta_phi;
   TH2F *h_selected_photon_eta_phi_bin[nPtBins] = {nullptr};
+  TH2F *h_selected_photon_z_phi_bin[nPtBins] = {nullptr};
   TH2F *h_selected_photon_eta_pt;
   TH2F *h_selected_photon_eta_zvtx;
   TH2F *h_selected_photon_phi_pt;
@@ -617,6 +714,12 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   TH1F *h_mixed_alpha = nullptr;
 
   SyncObject *syncobject{nullptr};
+
+  // MBD small info for timing
+  MBDSmallInfo *m_mbd_small_info = nullptr;
+  bool require_mbd_timing = false;
+  float mbd_rms_cut_min = 0;
+  float mbd_rms_cut_max = 30; // ns
 };
 
 #endif

@@ -68,7 +68,8 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
     {
       std::cerr << "Error. Could not open file " << infilename.str()
                 << std::endl;
-      return Fun4AllReturnCodes::ABORTEVENT;
+      //return Fun4AllReturnCodes::ABORTEVENT;
+      continue;
     }
 
     TTree *nanoDST = nullptr;
@@ -77,7 +78,8 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
     {
       std::cerr << "Error: tree " << treename << " was not found in the file "
                 << infilename.str() << std::endl;
-      return Fun4AllReturnCodes::ABORTEVENT;
+      //return Fun4AllReturnCodes::ABORTEVENT;
+      continue;
     }
 
     // Optimization for reading

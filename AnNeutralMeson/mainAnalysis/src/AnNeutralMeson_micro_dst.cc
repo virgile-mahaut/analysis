@@ -87,7 +87,7 @@ int AnNeutralMeson_micro_dst::Init(PHCompositeNode *)
                 << kSmearParFile << std::endl;
     }
     else
-  {
+    {
       static const std::array<const char*, 3> kEnergyFuncNames = {
           "f_energy_difference_global_minimum", "f_energy_difference_cE_0p08", "f_energy_difference_cE_0p05"};
       static const std::array<const char*, 3> kPositionFuncNames = {"f_position_difference_global_minimum",
@@ -298,6 +298,10 @@ int AnNeutralMeson_micro_dst::Init(PHCompositeNode *)
                                                 trigger_name.c_str());
     }
 
+    h_cluster_multiplicity = new TH1I(
+      "h_cluster_multiplicity",
+      ";N_{E>500 MeV}; Count/unit",
+      50,0,50);
     h_count_diphoton_nomatch = new TH1I(
       "h_count_diphoton_nomatch",
       ";>= 1 diphoton; Count",
@@ -410,10 +414,10 @@ int AnNeutralMeson_micro_dst::Init(PHCompositeNode *)
        ("h_photon_eta_phi_bin_" + std::to_string(iPt)).c_str(),
        ";#eta; #phi [rad]",
        200, -2.0, 2.0, 128, -M_PI, M_PI);
-      h_photon_phi_pt = new TH2F(
-        ("h_photon_phi_pt_bin_" + std::to_string(iPt)).c_str(),
-        ";#phi [rad];p_{T} [GeV]; counts",
-        128, -M_PI, M_PI, 200, 0, 20);
+      h_photon_z_phi_bin[iPt] = new TH2F(
+       ("h_photon_z_phi_bin_" + std::to_string(iPt)).c_str(),
+       ";z [cm]; #phi [rad]",
+       150, -150, 150, 128, -M_PI, M_PI);
     }
     
     h_selected_photon_eta = new TH1F(
@@ -463,10 +467,10 @@ int AnNeutralMeson_micro_dst::Init(PHCompositeNode *)
        ("h_selected_photon_eta_phi_bin_" + std::to_string(iPt)).c_str(),
        ";#eta; #phi [rad]",
        200, -2.0, 2.0, 128, -M_PI, M_PI);
-      h_selected_photon_phi_pt = new TH2F(
-        ("h_selected_photon_phi_pt_bin_" + std::to_string(iPt)).c_str(),
-        ";#phi [rad];p_{T} [GeV]; counts",
-        128, -M_PI, M_PI, 200, 0, 20);
+      h_selected_photon_z_phi_bin[iPt] = new TH2F(
+       ("h_selected_photon_z_phi_bin_" + std::to_string(iPt)).c_str(),
+       ";z [cm]; #phi [rad]",
+       150, -150, 150, 128, -M_PI, M_PI);
     }
 
     // diphoton QA
@@ -1114,6 +1118,18 @@ int AnNeutralMeson_micro_dst::InitRun(PHCompositeNode *topNode)
     findNode::getClass<RawTowerGeomContainer>(topNode,
                                               "TOWERGEOM_CEMC");
 
+  if (require_mbd_timing)
+  {
+    m_mbd_small_info =
+      findNode::getClass<MBDSmallInfo>(topNode, "MBD_SMALLINFO");
+    if (!m_mbd_small_info)
+    {
+      std::cerr << "AnNeutralMeson_micro_dst MBD_SMALLINFO node is missing" << "\n";
+      std::cerr << "MBD timing cut not applied" << std::endl;
+      require_mbd_timing = false;
+    }
+  }
+
   if (require_emulator_matching)
   {
     emcaltiles =
@@ -1271,12 +1287,22 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
     std::cout << "event: " << _eventcounter << std::endl;
   }
 
+  // Apply MBD timing cut
+  if (require_mbd_timing)
+  {
+    if (mbd_timing_cut()) return Fun4AllReturnCodes::ABORTEVENT;
+  }
+
   // Store event-level entries
   live_trigger = _smallclusters->get_live_trigger();
   scaled_trigger = _smallclusters->get_scaled_trigger();
   diphoton_bunchnumber = _smallclusters->get_bunch_number();
   cluster_number = _smallclusters->size();
 
+  if (store_qa) h_cluster_multiplicity->Fill(cluster_number);
+
+  //std::cout << "(" << cluster_number << ", " << diphoton_bunchnumber << ")" << std::endl;
+  
   if (vertexmap && !vertexmap->empty())
   {
     GlobalVertex *vtx = vertexmap->begin()->second;
@@ -1329,6 +1355,8 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
     {
       return Fun4AllReturnCodes::ABORTEVENT;
     }
+    if (require_mbd_any_vtx && !trigger_mbd_any_vtx) return Fun4AllReturnCodes::ABORTEVENT;
+    else if (require_mbd_vtx_10 && !trigger_mbd_vtx_10) return Fun4AllReturnCodes::ABORTEVENT;
     mbd_trigger_bit_event = true;
   }
   else if (require_photon_trigger_bit && !require_mbd_trigger_bit)
@@ -1338,6 +1366,10 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
     {
       return Fun4AllReturnCodes::ABORTEVENT;
     }
+    if (require_photon_3_any_vtx && !trigger_mbd_photon_3_any_vtx) return Fun4AllReturnCodes::ABORTEVENT;
+    else if (require_photon_3_vtx_10 && !trigger_mbd_photon_3_vtx_10) return Fun4AllReturnCodes::ABORTEVENT;
+    else if (require_photon_4_any_vtx && !trigger_mbd_photon_4_any_vtx) return Fun4AllReturnCodes::ABORTEVENT;
+    else if (require_photon_4_vtx_10 && !trigger_mbd_photon_4_vtx_10) return Fun4AllReturnCodes::ABORTEVENT;
     photon_trigger_bit_event = true;
   }
   else { // If both triggers are used, apply a pT threshold between them
@@ -1369,6 +1401,17 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
     float phi = smallcluster->get_phi();
     float chi2 = smallcluster->get_chi2();
     float ecore = smallcluster->get_ecore();
+    float z = vertex_z + radius * std::sinh(eta);
+
+    
+    if (do_custom_mask &&
+        z >= _z_min &&
+        z <= _z_max &&
+        phi >= _phi_min &&
+        phi <= _phi_max) {
+      //std::cout << "masked (" << z << "," << phi << ")" << std::endl;
+      continue;
+    }
 
     // Smear the photon's kinematics based on the EMCal given resolution
     if (do_smearing)
@@ -1386,6 +1429,16 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
       h_smear_E_deta->Fill(E_nominal, eta - eta_nominal);
       h_smear_E_dphi->Fill(E_nominal, phi - phi_nominal);
     }
+    else if (do_high_scale)
+    {
+      float E_nominal = ecore;
+      ecore = E_nominal + E_nominal * m_scale_diff / 100.0;
+    }
+    else if (do_small_scale)
+    {
+      float E_nominal = ecore;
+      ecore = E_nominal - E_nominal * m_scale_diff / 100.0;
+    }
     
     if (chi2 <= chi2_cuts[0] &&
         ecore >= ecore_cuts[0])
@@ -1400,7 +1453,9 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
         h_photon_eta_phi->Fill(photon.Eta(), photon.Phi());
         int iPt = FindBinBinary(diphoton_pt, pTBins, nPtBins + 1);
         if (!(iPt < 0 || iPt >= nPtBins)) {
+          double photon_z = vertex_z + radius * std::sinh(photon.Eta());
           h_photon_eta_phi_bin[iPt]->Fill(photon.Eta(), photon.Phi());
+          h_photon_z_phi_bin[iPt]->Fill(photon_z, photon.Phi());
         }
         h_photon_eta_pt->Fill(photon.Eta(), photon.Pt());
         h_photon_eta_zvtx->Fill(photon.Eta(), vertex_z);
@@ -1409,6 +1464,7 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
         h_photon_pt_zvtx->Fill(photon.Pt(), vertex_z);
       }
       Cluster cluster(photon, false); // by default, a cluster does not activate the trigger
+      //std::cout << "good photon (" << vertex_z + radius * std::sinh(photon.Eta()) << "," << photon.Phi() << ")" << std::endl;
       good_photons.push_back(cluster);
       num_photons++;
     }
@@ -1552,8 +1608,26 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
 
         int iPt = FindBinBinary(diphoton_pt, pTBins, nPtBins + 1);
         if (!(iPt < 0 || iPt >= nPtBins)) {
+          double photon_1_z = vertex_z + radius * std::sinh(photon1.Eta());
+          double photon_2_z = vertex_z + radius * std::sinh(photon2.Eta());
           h_selected_photon_eta_phi_bin[iPt]->Fill(photon1.Eta(), photon1.Phi());
           h_selected_photon_eta_phi_bin[iPt]->Fill(photon2.Eta(), photon2.Phi());
+          h_selected_photon_z_phi_bin[iPt]->Fill(photon_1_z, photon1.Phi());
+          h_selected_photon_z_phi_bin[iPt]->Fill(photon_2_z, photon2.Phi());
+          if (do_custom_mask &&
+              photon_1_z >= _z_min &&
+              photon_1_z <= _z_max &&
+              photon1.Phi() >= _phi_min &&
+              photon1.Phi() <= _phi_max) {
+            std::cerr << "Anomaly (" << photon_1_z << ", " << photon1.Phi() << ")" << std::endl;
+          }
+          if (do_custom_mask &&
+              photon_2_z >= _z_min &&
+              photon_2_z <= _z_max &&
+              photon2.Phi() >= _phi_min &&
+              photon2.Phi() <= _phi_max) {
+            std::cerr << "Anomaly (" << photon_2_z << ", " << photon2.Phi() << ")" << std::endl;
+          }
         }
         
         h_pair_eta->Fill(diphoton_eta);
@@ -1956,12 +2030,14 @@ bool AnNeutralMeson_micro_dst::photon_trigger_bit()
       ((scaled_trigger >> 25 & 0x1U) == 0x1U))
   {
     trigger_mbd_photon_3 = true;
+    trigger_mbd_photon_3_any_vtx = true;
   }
   // Else if (photon 3 GeV + MBD NS >=1, vtx < 10) is enabled for recording
   if ((scaledown[36] != -1) &&
       ((scaled_trigger >> 36 & 0x1U) == 0x1U))
   {
     trigger_mbd_photon_3 = true;
+    trigger_mbd_photon_3_vtx_10 = true;
   }
   // Else if (photon 3 GeV) is enabled for recording with no prescale
   if ((scaledown[29] == 0) &&
@@ -1971,10 +2047,12 @@ bool AnNeutralMeson_micro_dst::photon_trigger_bit()
     if ((live_trigger >> 25 & 0x1U) == 0x1U)
     {
       trigger_mbd_photon_3 = true;
+      trigger_mbd_photon_3_any_vtx = true;
     }
     if ((live_trigger >> 36 & 0x1U) == 0x1U)
     {
       trigger_mbd_photon_3 = true;
+      trigger_mbd_photon_3_vtx_10 = true;
     }
   }
 
@@ -1983,12 +2061,14 @@ bool AnNeutralMeson_micro_dst::photon_trigger_bit()
       ((scaled_trigger >> 26 & 0x1U) == 0x1U))
   {
     trigger_mbd_photon_4 = true;
+    trigger_mbd_photon_4_any_vtx = true;
   }
   // Else if (photon 4 GeV + MBD NS >=1, vtx < 10) is enabled for recording
   if ((scaledown[37] != -1) &&
       ((scaled_trigger >> 37 & 0x1U) == 0x1U))
   {
     trigger_mbd_photon_4 = true;
+    trigger_mbd_photon_4_vtx_10 = true;
   }
   // Else if (photon 4 GeV) is enabled for recording with no prescale
   if ((scaledown[30] == 0) &&
@@ -1998,10 +2078,12 @@ bool AnNeutralMeson_micro_dst::photon_trigger_bit()
     if ((live_trigger >> 26 & 0x1U) == 0x1U)
     {
       trigger_mbd_photon_4 = true;
+      trigger_mbd_photon_4_any_vtx = true;
     }
     if ((live_trigger >> 37 & 0x1U) == 0x1U)
     {
       trigger_mbd_photon_4 = true;
+      trigger_mbd_photon_4_vtx_10 = true;
     }
   }
   return (trigger_mbd_photon_3 || trigger_mbd_photon_4);
@@ -2450,4 +2532,17 @@ ROOT::Math::XYZVector AnNeutralMeson_micro_dst::EnergyWeightedAverageP3(
   }
 
   return (sumE > 0.0) ? (sum_vector * (1.0 / sumE)) : ROOT::Math::XYZVector(0.,0.,0.);
+}
+
+bool AnNeutralMeson_micro_dst::mbd_timing_cut()
+{
+  for (int iArm = 0; iArm < 2; iArm++)
+  {
+    float rms_time = m_mbd_small_info->get_rms_time(iArm);
+    if (rms_time < mbd_rms_cut_min || rms_time > mbd_rms_cut_max)
+    {
+      return true;
+    }
+  }
+  return false;
 }
