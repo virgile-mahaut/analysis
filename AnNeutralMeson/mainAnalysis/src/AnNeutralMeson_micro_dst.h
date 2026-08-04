@@ -129,6 +129,9 @@ class AnNeutralMeson_micro_dst : public SubsysReco
         band_limits[j] = band_limits_3[j];
       }
       break;
+    default:
+      std::cout << "invalid sigma_number, take 3 sigma as default" << std::endl;
+      break;
     }
   }
 
@@ -146,12 +149,12 @@ class AnNeutralMeson_micro_dst : public SubsysReco
     if (scale_variation == 1) {
       do_small_scale = true;
       do_high_scale = false;
-      std::cout << "Reduce energy scale by 2.6%" << std::endl;
+      std::cout << "Reduce energy scale by " << m_scale_diff <<  "%" << std::endl;
     }
     else if (scale_variation == 2) {
       do_small_scale = false;
       do_high_scale = true;
-      std::cout << "Increase energy scale by 2.6%" << std::endl;
+      std::cout << "Increase energy scale by " << m_scale_diff << "%" << std::endl;
     }
     else {
       do_small_scale = false;
@@ -364,9 +367,17 @@ class AnNeutralMeson_micro_dst : public SubsysReco
   static constexpr int nSpins = 2; // up or down spin
   const std::string spins[nSpins] = {"up", "down"};
 
-  // pT bins, same as those used in PHENIX 2021 Asymmetries
-  static constexpr int nPtBins = 9;
-  const float pTBins[nPtBins + 1] = {1, 2, 3, 4, 5, 6, 7, 8, 10, 20};
+  // // pT bins, same as those used in PHENIX 2021 Asymmetries
+  // static constexpr int nPtBins = 9;
+  // const float pTBins[nPtBins + 1] = {1, 2, 3, 4, 5, 6, 7, 8, 10, 20};
+
+  // pT bins, re-binned to limit migration effects
+  static constexpr int nPtBins = 8;
+  const float pTBins[nPtBins + 1] = {1, 2, 3, 4, 5, 6, 8, 10, 20};
+
+  // // pT bins, re-binned to limit migration effects (more stringent)
+  // static constexpr int nPtBins = 7;
+  // const float pTBins[nPtBins + 1] = {1, 2, 3, 4, 5, 7, 10, 20};
 
   // New binning -> more equally distributed
   static constexpr int nEtaBins = 8;
