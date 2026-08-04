@@ -498,10 +498,10 @@ void AnNeutralMeson_nano::BookHistos(const std::string &outputfilename)
   // Kinematic relation pT vs eta vs xF
   // diphoton eta pT-bin by pT-bin
   for (int iP = 0; iP < 2; iP++) {
-    for (int iPt = 1; iPt <= 9; iPt++) {
+    for (int iPt = 0; iPt < nPtBins; iPt++) {
       std::stringstream h_name;
-      h_name << "h_pair_" << particle[iP] << "_eta_pt_" << iPt;
-      h_pair_meson_pt_eta[iP][iPt-1] = new TH1F(
+      h_name << "h_pair_" << particle[iP] << "_eta_pt_" << std::to_string(iPt+1);
+      h_pair_meson_pt_eta[iP][iPt] = new TH1F(
         h_name.str().c_str(),
         ";#eta; Counts / [20 mrad]",
         200, -2.0, 2.0);
@@ -511,10 +511,10 @@ void AnNeutralMeson_nano::BookHistos(const std::string &outputfilename)
   // Kinematic relation pT vs eta vs xF
   // diphoton xF pT-bin by pT-bin
   for (int iP = 0; iP < 2; iP++) {
-    for (int iPt = 1; iPt <= 9; iPt++) {
+    for (int iPt = 0; iPt < nPtBins; iPt++) {
       std::stringstream h_name;
-      h_name << "h_pair_" << particle[iP] << "_xf_pt_" << iPt;
-      h_pair_meson_pt_xf[iP][iPt-1] = new TH1F(
+      h_name << "h_pair_" << particle[iP] << "_xf_pt_" << std::to_string(iPt+1);
+      h_pair_meson_pt_xf[iP][iPt] = new TH1F(
         h_name.str().c_str(),
         ";x_{F}; Counts / [2 mrad]",
         200, -0.2, 0.2);
@@ -524,10 +524,10 @@ void AnNeutralMeson_nano::BookHistos(const std::string &outputfilename)
   // Kinematic relation pT vs eta vs xF
   // diphoton pT eta-bin by eta-bin
   for (int iP = 0; iP < 2; iP++) {
-    for (int iEta = 1; iEta <= 8; iEta++) {
+    for (int iEta = 0; iEta < nEtaBins; iEta++) {
       std::stringstream h_name;
-      h_name << "h_pair_" << particle[iP] << "_pt_eta_" << iEta;
-      h_pair_meson_eta_pt[iP][iEta-1] = new TH1F(
+      h_name << "h_pair_" << particle[iP] << "_pt_eta_" << std::to_string(iEta+1);
+      h_pair_meson_eta_pt[iP][iEta] = new TH1F(
         h_name.str().c_str(),
         ";p_{T} [GeV]; Counts / [100 MeV]",
         200, 0.0, 20);
@@ -537,10 +537,10 @@ void AnNeutralMeson_nano::BookHistos(const std::string &outputfilename)
   // Kinematic relation pT vs eta vs xF
   // diphoton xF eta-bin by eta-bin
   for (int iP = 0; iP < 2; iP++) {
-    for (int iEta = 1; iEta <= 8; iEta++) {
+    for (int iEta = 0; iEta < nEtaBins; iEta++) {
       std::stringstream h_name;
-      h_name << "h_pair_" << particle[iP] << "_xf_eta_" << iEta;
-      h_pair_meson_eta_xf[iP][iEta-1] = new TH1F(
+      h_name << "h_pair_" << particle[iP] << "_xf_eta_" << std::to_string(iEta+1);
+      h_pair_meson_eta_xf[iP][iEta] = new TH1F(
         h_name.str().c_str(),
         ";x_{F}; Counts / [2 mrad]",
         200, -0.2, 0.2);
@@ -550,10 +550,10 @@ void AnNeutralMeson_nano::BookHistos(const std::string &outputfilename)
   // Kinematic relation pT vs eta vs xF
   // diphoton pT xf-bin by xf-bin
   for (int iP = 0; iP < 2; iP++) {
-    for (int iXf = 1; iXf <= 8; iXf++) {
+    for (int iXf = 0; iXf < nXfBins; iXf++) {
       std::stringstream h_name;
-      h_name << "h_pair_" << particle[iP] << "_pt_xf_" << iXf;
-      h_pair_meson_xf_pt[iP][iXf-1] = new TH1F(
+      h_name << "h_pair_" << particle[iP] << "_pt_xf_" << std::to_string(iXf+1);
+      h_pair_meson_xf_pt[iP][iXf] = new TH1F(
         h_name.str().c_str(),
         ";p_{T} [GeV]; Counts / [100 MeV]",
         200, 0.0, 20);
@@ -563,10 +563,10 @@ void AnNeutralMeson_nano::BookHistos(const std::string &outputfilename)
   // Kinematic relation pT vs eta vs xF
   // diphoton eta xf-bin by xf-bin
   for (int iP = 0; iP < 2; iP++) {
-    for (int iXf = 1; iXf <= 8; iXf++) {
+    for (int iXf = 0; iXf < nXfBins; iXf++) {
       std::stringstream h_name;
-      h_name << "h_pair_" << particle[iP] << "_eta_xf_" << iXf;
-      h_pair_meson_xf_eta[iP][iXf-1] = new TH1F(
+      h_name << "h_pair_" << particle[iP] << "_eta_xf_" << std::to_string(iXf+1);
+      h_pair_meson_xf_eta[iP][iXf] = new TH1F(
         h_name.str().c_str(),
         ";#eta; Counts / [20 mrad]",
         200, -2.0, 2.0);
