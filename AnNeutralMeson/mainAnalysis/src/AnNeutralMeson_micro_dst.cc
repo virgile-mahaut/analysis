@@ -528,207 +528,27 @@ int AnNeutralMeson_micro_dst::Init(PHCompositeNode *)
       200, 0, 20, 200, -200, 200);
 
     // diphoton eta pT-bin by pT-bin
-    h_pair_pi0_eta_pt_1 = new TH1F( // 1-2 GeV
-      "h_pair_pi0_eta_pt_1",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_pi0_eta_pt_2 = new TH1F( // 2-3 GeV
-      "h_pair_pi0_eta_pt_2",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_pi0_eta_pt_3 = new TH1F( // 3-4 GeV
-      "h_pair_pi0_eta_pt_3",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_pi0_eta_pt_4 = new TH1F( // 4-5 GeV
-      "h_pair_pi0_eta_pt_4",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_pi0_eta_pt_5 = new TH1F( // 5-6 GeV
-      "h_pair_pi0_eta_pt_5",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_pi0_eta_pt_6 = new TH1F( // 6-7 GeV
-      "h_pair_pi0_eta_pt_6",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_pi0_eta_pt_7 = new TH1F( // 7-8 GeV
-      "h_pair_pi0_eta_pt_7",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_pi0_eta_pt_8 = new TH1F( // 8-10 GeV
-      "h_pair_pi0_eta_pt_8",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_pi0_eta_pt_9 = new TH1F( // 10-20 GeV
-      "h_pair_pi0_eta_pt_9",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_eta_eta_pt_1 = new TH1F( // 1-2 GeV
-      "h_pair_eta_eta_pt_1",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_eta_eta_pt_2 = new TH1F( // 2-3 GeV
-      "h_pair_eta_eta_pt_2",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_eta_eta_pt_3 = new TH1F( // 3-4 GeV
-      "h_pair_eta_eta_pt_3",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_eta_eta_pt_4 = new TH1F( // 4-5 GeV
-      "h_pair_eta_eta_pt_4",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_eta_eta_pt_5 = new TH1F( // 5-6 GeV
-      "h_pair_eta_eta_pt_5",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_eta_eta_pt_6 = new TH1F( // 6-7 GeV
-      "h_pair_eta_eta_pt_6",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_eta_eta_pt_7 = new TH1F( // 7-8 GeV
-      "h_pair_eta_eta_pt_7",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_eta_eta_pt_8 = new TH1F( // 8-10 GeV
-      "h_pair_eta_eta_pt_8",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    h_pair_eta_eta_pt_9 = new TH1F( // 10-20 GeV
-      "h_pair_eta_eta_pt_9",
-      ";#eta [rad]; Counts / [20 mrad]",
-      200,-2.0,2.0);
-
-    // diphoton xF pT-bin by pT-bin
-
-    h_pair_pi0_xf_pt_1 = new TH1F( // 1-2 GeV
-      "h_pair_pi0_xf_pt_1",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_pi0_xf_pt_2 = new TH1F( // 2-3 GeV
-      "h_pair_pi0_xf_pt_2",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_pi0_xf_pt_3 = new TH1F( // 3-4 GeV
-      "h_pair_pi0_xf_pt_3",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_pi0_xf_pt_4 = new TH1F( // 4-5 GeV
-      "h_pair_pi0_xf_pt_4",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_pi0_xf_pt_5 = new TH1F( // 5-6 GeV
-      "h_pair_pi0_xf_pt_5",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_pi0_xf_pt_6 = new TH1F( // 6-7 GeV
-      "h_pair_pi0_xf_pt_6",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_pi0_xf_pt_7 = new TH1F( // 7-8 GeV
-      "h_pair_pi0_xf_pt_7",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_pi0_xf_pt_8 = new TH1F( // 8-10 GeV
-      "h_pair_pi0_xf_pt_8",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_pi0_xf_pt_9 = new TH1F( // 10-20 GeV
-      "h_pair_pi0_xf_pt_9",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_eta_xf_pt_1 = new TH1F( // 1-2 GeV
-      "h_pair_eta_xf_pt_1",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_eta_xf_pt_2 = new TH1F( // 2-3 GeV
-      "h_pair_eta_xf_pt_2",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_eta_xf_pt_3 = new TH1F( // 3-4 GeV
-      "h_pair_eta_xf_pt_3",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_eta_xf_pt_4 = new TH1F( // 4-5 GeV
-      "h_pair_eta_xf_pt_4",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_eta_xf_pt_5 = new TH1F( // 5-6 GeV
-      "h_pair_eta_xf_pt_5",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_eta_xf_pt_6 = new TH1F( // 6-7 GeV
-      "h_pair_eta_xf_pt_6",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_eta_xf_pt_7 = new TH1F( // 7-8 GeV
-      "h_pair_eta_xf_pt_7",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_eta_xf_pt_8 = new TH1F( // 8-10 GeV
-      "h_pair_eta_xf_pt_8",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_pair_eta_xf_pt_9 = new TH1F( // 10-20 GeV
-      "h_pair_eta_xf_pt_9",
-      ";x_{F} [rad]; Counts / [2 mrad]",
-      200,-0.2,0.2);
-
-    h_meson_pi0_pt = new TH1F(
-      "h_meson_pi0_pt",
-      ";p_{T} [GeV];counts",
-      200, 0, 20);
-
-    h_meson_pi0_E = new TH1F(
-      "h_meson_pi0_E",
-      ";E [GeV];counts",
-      200, 0, 20);
-  
-    h_meson_eta_pt = new TH1F(
-      "h_meson_eta_pt",
-      ";p_{T} [GeV];counts",
-      200, 0, 20);
-
-    h_meson_eta_E = new TH1F(
-      "h_meson_eta_E",
-      ";E [GeV];counts",
-      200, 0, 20);
+    for (int iP = 0; iP < nParticles; iP++) {
+      for (int iPt = 0; iPt < nPtBins; iPt++) {
+        h_pair_meson_eta_pt[iP][iPt] = new TH1F( // eta distributions per pT bin
+          ("h_pair_" + particle[iP] + "_eta_pt_" + std::to_string(iPt+1)).c_str(),
+          ";#eta; Counts / [0.02]",
+          200,-2.0,2.0);
+        h_pair_meson_xf_pt[iP][iPt] = new TH1F( // xF distributions per pT bin
+          ("h_pair_" + particle[iP] + "_xf_pt_" + std::to_string(iPt+1)).c_str(),
+          ";x_{F}; Counts / [0.002]",
+          200,-0.2,0.2);
+      }
+      
+      h_meson_pt[iP] = new TH1F(
+        ("h_meson_" + particle[iP] + "_pt").c_str(),
+        ";p_{T} [GeV];counts/[100 MeV]",
+        200, 0, 20);
+      h_meson_E[iP] = new TH1F(
+        ("h_meson_" + particle[iP] + "_pt").c_str(),
+        ";E [GeV];counts/[100 MeV]",
+        200, 0, 20);
+    }
   }
   
   // diphoton invariant mass
@@ -1714,104 +1534,11 @@ int AnNeutralMeson_micro_dst::process_event(PHCompositeNode *topNode)
       {
         if (iP == 0 && iR == 0)
         {
-          h_meson_pi0_pt->Fill(diphoton_pt);
-          h_meson_pi0_E->Fill(diphoton.E());
-          if (1 < diphoton_pt && diphoton_pt < 2)
-          {
-            h_pair_pi0_eta_pt_1->Fill(diphoton_eta);
-            h_pair_pi0_xf_pt_1->Fill(diphoton_xf);
-          }
-          else if (2 < diphoton_pt && diphoton_pt < 3)
-          {
-            h_pair_pi0_eta_pt_2->Fill(diphoton_eta);
-            h_pair_pi0_xf_pt_2->Fill(diphoton_xf);
-          }
-          else if (3 < diphoton_pt && diphoton_pt < 4)
-          {
-            h_pair_pi0_eta_pt_3->Fill(diphoton_eta);
-            h_pair_pi0_xf_pt_3->Fill(diphoton_xf);
-          }
-          else if (4 < diphoton_pt && diphoton_pt < 5)
-          {
-            h_pair_pi0_eta_pt_4->Fill(diphoton_eta);
-            h_pair_pi0_xf_pt_4->Fill(diphoton_xf);
-          }
-          else if (5 < diphoton_pt && diphoton_pt < 6)
-          {
-            h_pair_pi0_eta_pt_5->Fill(diphoton_eta);
-            h_pair_pi0_xf_pt_5->Fill(diphoton_xf);
-          }
-          else if (6 < diphoton_pt && diphoton_pt < 7)
-          {
-            h_pair_pi0_eta_pt_6->Fill(diphoton_eta);
-            h_pair_pi0_xf_pt_6->Fill(diphoton_xf);
-          }
-          else if (7 < diphoton_pt && diphoton_pt < 8)
-          {
-            h_pair_pi0_eta_pt_7->Fill(diphoton_eta);
-            h_pair_pi0_xf_pt_7->Fill(diphoton_xf);
-          }
-          else if (8 < diphoton_pt && diphoton_pt < 10)
-          {
-            h_pair_pi0_eta_pt_8->Fill(diphoton_eta);
-            h_pair_pi0_xf_pt_8->Fill(diphoton_xf);
-          }
-          else if (10 < diphoton_pt && diphoton_pt < 20)
-          {
-            h_pair_pi0_eta_pt_9->Fill(diphoton_eta);
-            h_pair_pi0_xf_pt_9->Fill(diphoton_xf);
-          }
-        }
+          h_meson_pt[iP]->Fill(diphoton_pt);
+          h_meson_E[iP]->Fill(diphoton.E());
 
-        if (iP == 1 && iR == 0)
-        {
-          h_meson_eta_pt->Fill(diphoton_pt);
-          h_meson_eta_E->Fill(diphoton.E());
-          if (1 < diphoton_pt && diphoton_pt < 2)
-          {
-            h_pair_eta_eta_pt_1->Fill(diphoton_eta);
-            h_pair_eta_xf_pt_1->Fill(diphoton_xf);
-          }
-          else if (2 < diphoton_pt && diphoton_pt < 3)
-          {
-            h_pair_eta_eta_pt_2->Fill(diphoton_eta);
-            h_pair_eta_xf_pt_2->Fill(diphoton_xf);
-          }
-          else if (3 < diphoton_pt && diphoton_pt < 4)
-          {
-            h_pair_eta_eta_pt_3->Fill(diphoton_eta);
-            h_pair_eta_xf_pt_3->Fill(diphoton_xf);
-          }
-          else if (4 < diphoton_pt && diphoton_pt < 5)
-          {
-            h_pair_eta_eta_pt_4->Fill(diphoton_eta);
-            h_pair_eta_xf_pt_4->Fill(diphoton_xf);
-          }
-          else if (5 < diphoton_pt && diphoton_pt < 6)
-          {
-            h_pair_eta_eta_pt_5->Fill(diphoton_eta);
-            h_pair_eta_xf_pt_5->Fill(diphoton_xf);
-          }
-          else if (6 < diphoton_pt && diphoton_pt < 7)
-          {
-            h_pair_eta_eta_pt_6->Fill(diphoton_eta);
-            h_pair_eta_xf_pt_6->Fill(diphoton_xf);
-          }
-          else if (7 < diphoton_pt && diphoton_pt < 8)
-          {
-            h_pair_eta_eta_pt_7->Fill(diphoton_eta);
-            h_pair_eta_xf_pt_7->Fill(diphoton_xf);
-          }
-          else if (8 < diphoton_pt && diphoton_pt < 10)
-          {
-            h_pair_eta_eta_pt_8->Fill(diphoton_eta);
-            h_pair_eta_xf_pt_8->Fill(diphoton_xf);
-          }
-          else if (10 < diphoton_pt && diphoton_pt < 20)
-          {
-            h_pair_eta_eta_pt_9->Fill(diphoton_eta);
-            h_pair_eta_xf_pt_9->Fill(diphoton_xf);
-          }
+          h_pair_meson_eta_pt[iP][iPt]->Fill(diphoton_eta);
+          h_pair_meson_xf_pt[iP][iPt]->Fill(diphoton_xf);
         }
       }
 

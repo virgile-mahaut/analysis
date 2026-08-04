@@ -235,19 +235,19 @@ class AnNeutralMeson_nano : public SubsysReco
   TH1F* h_norm_xf[nParticles];
 
   // Kinematic correlations
-  TH1F *h_pair_meson_zvtx[2] = {nullptr};
-  TH1F *h_pair_meson_pt_eta[2][9] = {nullptr};
-  TH1F *h_pair_meson_pt_xf[2][9] = {nullptr};
-  TH1F *h_pair_meson_eta_pt[2][8] = {nullptr};
-  TH1F *h_pair_meson_eta_xf[2][8] = {nullptr};
-  TH1F *h_pair_meson_xf_pt[2][8] = {nullptr};
-  TH1F *h_pair_meson_xf_eta[2][8] = {nullptr};
-  TH2F *h_pair_meson_2D_xf_pt[2] = {nullptr};
-  TH2F *h_pair_meson_2D_xf_eta[2] = {nullptr};
-  TH2F *h_pair_meson_2D_xf_zvtx[2] = {nullptr};
-  TH2F *h_pair_meson_2D_pt_eta[2] = {nullptr};
-  TH2F *h_pair_meson_2D_pt_zvtx[2] = {nullptr};
-  TH2F *h_pair_meson_2D_eta_zvtx[2] = {nullptr};
+  TH1F *h_pair_meson_zvtx[nParticles] = {nullptr};
+  TH1F *h_pair_meson_pt_eta[nParticles][nPtBins] = {nullptr};
+  TH1F *h_pair_meson_pt_xf[nParticles][nPtBins] = {nullptr};
+  TH1F *h_pair_meson_eta_pt[nParticles][nEtaBins] = {nullptr};
+  TH1F *h_pair_meson_eta_xf[nParticles][nEtaBins] = {nullptr};
+  TH1F *h_pair_meson_xf_pt[nParticles][nXfBins] = {nullptr};
+  TH1F *h_pair_meson_xf_eta[nParticles][nXfBins] = {nullptr};
+  TH2F *h_pair_meson_2D_xf_pt[nParticles] = {nullptr};
+  TH2F *h_pair_meson_2D_xf_eta[nParticles] = {nullptr};
+  TH2F *h_pair_meson_2D_xf_zvtx[nParticles] = {nullptr};
+  TH2F *h_pair_meson_2D_pt_eta[nParticles] = {nullptr};
+  TH2F *h_pair_meson_2D_pt_zvtx[nParticles] = {nullptr};
+  TH2F *h_pair_meson_2D_eta_zvtx[nParticles] = {nullptr};
 
   // Output bunch yields, for bunch shuffling
   bool store_bunch_yields = false;
