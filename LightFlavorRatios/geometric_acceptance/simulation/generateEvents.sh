@@ -13,6 +13,8 @@ export ROOT_INCLUDE_PATH=$MYINSTALL/include:$ROOT_INCLUDE_PATH
 
 source /opt/sphenix/core/bin/setup_local.sh $MYINSTALL
 
+#root.exe -q -b Fun4All_HFG.C\(\"$1\",\"cascade\"\)
+#root.exe -q -b Fun4All_HFG.C\(\"$1\"\)
 root.exe -q -b Fun4All_HFG.C\(\"$1\",\"Lambda2ppi\"\)
-root.exe -q -b Fun4All_HFG.C\(\"$1\"\)
+root.exe -q -b Fun4All_HFG.C\(\"$1\",\"Lambdabar2ppi\"\)
 echo Script done

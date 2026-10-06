@@ -1,11 +1,12 @@
-+JobFlavour                   = "expresso"
+#Usage: condor_submit RunCondorSim.sub list_file=ListCondorRunSim_0mrad_single.csv
+Universe                      = vanilla
 executable                    = CondorRunSim.sh
-arguments                     = $(runtype) $(nSeg) $(iSeg) $(radius_value)
-output                        = condor_sim/condor_$(runtype)_$(iSeg)_$(nSeg)_$(radius_value).out
-error			              = condor_sim/condor_$(runtype)_$(iSeg)_$(nSeg)_$(radius_value).err
-log                           = /tmp/condor_$(runtype)_$(iSeg)_$(nSeg)_$(radius_value).log
-request_memory                = 4GB
+arguments                     = $(runtype) $(nSeg) $(iSeg) $(radius_value) $(do_reweighting) $(mrad_option) $(interaction_index)
+output                        = condor_sim/condor_sim_$(mrad_str)_$(interaction_str)/condor_$(runtype)_$(iSeg)_$(nSeg)_$(radius_value).out
+error                         = condor_sim/condor_sim_$(mrad_str)_$(interaction_str)/condor_$(runtype)_$(iSeg)_$(nSeg)_$(radius_value).err
+log                           = /tmp/condor_$(mrad_str)_$(interaction_str)_$(runtype)_$(iSeg)_$(nSeg)_$(radius_value).log
+request_memory                = 4096MB
 when_to_transfer_output       = ON_EXIT
 Notification                  = Never
-Notify_user                   = hj2552@columbia.edu
-queue runtype, nSeg, iSeg, radius_value from ListCondorRunSim.csv
+PeriodicHold                  = (NumJobStarts>=1 && JobStatus == 1)
+queue runtype, nSeg, iSeg, radius_value, do_reweighting, mrad_option, interaction_index, mrad_str, interaction_str from $(list_file)

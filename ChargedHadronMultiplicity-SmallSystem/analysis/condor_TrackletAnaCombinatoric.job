@@ -1,0 +1,25 @@
+Universe           = vanilla
+initialDir         = /sphenix/user/hjheng/sPHENIXRepo/analysis/ChargedHadronMultiplicity-SmallSystem/analysis
+Executable         = ./runTrackletAnaCombinatoric.sh
+PeriodicHold       =  (NumJobStarts>=1 && JobStatus == 1 && !(ON_EVICT_CHECK_RequestMemory_REQUIREMENTS))
+request_memory = 4000MB
+retry_request_memory_increase = RequestMemory + 2000
+retry_request_memory_max = 13000MB
+Priority           = 20
+job_lease_duration = 3600
+isData             = 0
+seedingalgo        = ACTS
+scanTag            = cotThetaMax4p0
+ntuple             = /sphenix/tg/tg01/hf/hjheng/ppg-dNdEta-OOpp/simulation-nopileup-ntuple/$(seedingalgo)/$(scanTag)/ntuple_$(Process).root
+outdir             = /sphenix/tg/tg01/hf/hjheng/ppg-dNdEta-OOpp/TrackletAna-HistOutput/simulation/$(seedingalgo)/$(scanTag)_UseTruthVtx/
+outputfile         = $(outdir)/hist_$(Process).root
+nEvents            = 1000
+pairCut            = 0.3
+clusadccutset      = 0
+clusphisizecutset  = 0
+pairCutMode        = absdPhi
+Output             = $(Initialdir)/condorLog/condor_$(Process).out
+Error              = $(Initialdir)/condorLog/condor_$(Process).err
+Log                = /tmp/condor-trackletana-hjheng_$(Process).log
+Arguments          = "$(isData) $(ntuple) $(outputfile) $(nEvents) $(pairCut) $(clusadccutset) $(clusphisizecutset) $(pairCutMode)"
+Queue 10000

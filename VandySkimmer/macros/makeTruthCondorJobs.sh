@@ -18,7 +18,7 @@ filedensity=25 #segments per job
 nfiles=100
 makedatalist=false
 forcechunk=false
-
+gen="Pythia"
 #Setting directories and ensuring they exist
 
 make_condor_jobs()
@@ -26,6 +26,10 @@ make_condor_jobs()
 	if [[ $nfiles -eq 0 ]]; then 
 		nfiles=`wc -l < ${triggertype}_data/jet_density_${filedensity}.list`
 	fi	
+	P_or_H=true
+	if [[ $triggertype = *"Herwig"* ]]; then 
+		P_or_H=false
+	fi
 	for i in $(seq 0 ${nfiles}); do 
 		j=$(( i+1 ))
 		if [ $i -eq $nfiles ]; then 
@@ -46,7 +50,7 @@ make_condor_jobs()
 		IFS=$'\n' read -d '' -r -a blanklines < $condor_testfile
 		echo "${blanklines[0]}" > $condor_file 
 		echo "${blanklines[1]}"$(pwd)"/run_VandySkimmerTruth.sh" >> $condor_file
-		echo "${blanklines[2]}"$calo $truth $jet $global $outDir $MYINSTALL $(pwd)>> $condor_file
+		echo "${blanklines[2]}"$calo $truth $jet $global $outDir $MYINSTALL $(pwd) $P_or_H>> $condor_file
 		echo "${blanklines[3]}"$condor_out_file >> $condor_file
 		echo "${blanklines[4]}"$condor_err_file >> $condor_file
 		echo "${blanklines[5]}"$condor_log_file >> $condor_file
@@ -86,6 +90,9 @@ set_out_dir()
 get_dst_list()
 {
 	base_dir=$(pwd)
+	if [ "$verbose" = true ]; then 
+		echo "trigger type is now: ${triggertype}"
+	fi 
 	if [ "$verbose" = true ]; then 
 		echo "Checking if data directory exists for ${triggertype}"
 	fi 
@@ -210,6 +217,17 @@ extract_argument() {
 	echo "${2:-${1#*=}}"
 }
 
+setGenerator(){
+	if [ "$verbose" = true ]; then 
+		echo "setting generator to ${gen}"
+	fi 
+	if [[ $gen = *"Herwig"* ]]; then
+		triggertype=${gen}${triggertype}
+		if [ "$verbose" = true ]; then 
+			echo "trigger type is now: ${triggertype}"
+		fi 
+	fi
+}
 handle_options()
 {
 	while [ $# -gt 0 ]; do 
@@ -324,11 +342,41 @@ converttriggertype()
 		prodtype=28
 	elif [ "${triggertype}" = "PhotonJet10" ]; then
 		prodtype=29
+	elif [ "${triggertype}" = "HerwigMB" ]; then
+		prodtype=30
+	elif [ "${triggertype}" = "HerwigJet5" ]; then
+		prodtype=40
+	elif [ "${triggertype}" = "HerwigJet10" ]; then
+		prodtype=31
+	elif [ "${triggertype}" = "HerwigJet12" ]; then
+		prodtype=41
+	elif [ "${triggertype}" = "HerwigJet15" ]; then
+		prodtype=33
+	elif [ "${triggertype}" = "HerwigJet20" ]; then
+		prodtype=42
+	elif [ "${triggertype}" = "HerwigJet30" ]; then
+		prodtype=28
+	elif [ "${triggertype}" = "HerwigJet40" ]; then
+		prodtype=43
+	elif [ "${triggertype}" = "HerwigJet50" ]; then
+		prodtype=44
+	elif [ "${triggertype}" = "HerwigJet60" ]; then
+		prodtype=38
+	elif [ "${triggertype}" = "HerwigPhotonJet5" ]; then
+		prodtype=45
+	elif [ "${triggertype}" = "HerwigPhotonJet10" ]; then
+		prodtype=46
+	elif [ "${triggertype}" = "HerwigPhotonJet10" ]; then
+		prodtype=47
 	fi
 }
 handle_options "$@"
+setGenerator
 make_home_dir
 set_out_dir
+if [ "$verbose" = true ]; then 
+	echo "trigger type is now: ${triggertype}"
+fi 
 if [ "$verbose" = true ]; then 
 	echo "Running over ${nfiles} segement(s)"
 fi 

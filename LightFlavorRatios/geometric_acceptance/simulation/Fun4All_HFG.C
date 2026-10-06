@@ -41,8 +41,8 @@ R__LOAD_LIBRARY(libsimqa_modules.so)
 
 int Fun4All_HFG(std::string processID = "0", std::string channel = "Kshort2pipi")
 {
-  int nEvents = 4e2;
-  std::string outDir = "./" + channel + "_20260320_DetroitMB_CR_2_mode_pTref_3p0_high_pT_boost/";
+  int nEvents = 5e2;
+  std::string outDir = "./" + channel + "_20260422_DetroitMB_CR_2_mode_pTref_1p4/";
 
   string makeDirectory = "mkdir -p " + outDir + "hfEff";
   system(makeDirectory.c_str());
@@ -58,20 +58,26 @@ int Fun4All_HFG(std::string processID = "0", std::string channel = "Kshort2pipi"
 
   Input::PYTHIA8 = true;
   int particleID = 421;
-  PYTHIA8::config_file[0] = "steeringCards/pythia8_MB_Detroit.cfg";
+  PYTHIA8::config_file[0] = "steeringCards/pythia8_MB_Detroit_Tony.cfg";
   if (channel == "Kshort2pipi")
   {
-    //run_pipi_reco = true;
-    //PYTHIA8::config_file[0] = "steeringCards/pythia8_K2pipi_Detroit.cfg";
-    //EVTGENDECAYER::DecayFile = "decFiles/K2pipi.DEC";
+    run_pipi_reco = true;
     particleID = 310;
   }
   else if (channel == "Lambda2ppi")
   {
-    //run_ppi_reco = true;
-    //PYTHIA8::config_file[0] = "steeringCards/pythia8_L02ppi_Detroit.cfg";
-    //EVTGENDECAYER::DecayFile = "decFiles/L02ppi.DEC";
+    run_ppi_reco = true;
     particleID = 3122;
+  }
+  else if (channel == "Lambdabar2ppi")
+  {
+    run_anti_ppi_reco = true;
+    particleID = -3122;
+  }
+  else if (channel == "cascade")
+  {
+    run_cascade_reco = true;
+    particleID = 3312;
   }
   else if (channel == "minBias")
   {
@@ -86,31 +92,70 @@ int Fun4All_HFG(std::string processID = "0", std::string channel = "Kshort2pipi"
 
   InputInit();
 
-  float abs_eta = 10;
-
-  PHPy8ParticleTrigger * p8_hf_signal_trigger = new PHPy8ParticleTrigger();
-  p8_hf_signal_trigger->SetPtLow(3.);
-  p8_hf_signal_trigger->SetPtHigh(4.);
-  p8_hf_signal_trigger->SetEtaHighLow(abs_eta, -1*abs_eta); // sample a rapidity range higher than the sPHENIX tracking pseudorapidity
-  p8_hf_signal_trigger->SetStableParticleOnly(false); // process unstable particles that include quarks
+  float abs_eta = 1.1;
 
   if (channel != "minBias")
   {
+/*
+    int pidtrig = particleID;
+
+    auto trigger = new PHPy8ParticleTrigger();
+    trigger->Verbosity(0);
+    trigger->AddParticles(pidtrig);
+    trigger->AddParticles(-1 * pidtrig);
+    trigger->SetYHighLow(1.2, -1.2);
+    trigger->SetStableParticleOnly(false);
+    trigger->PrintConfig();
+    // assign
+    INPUTGENERATOR::Pythia8[0]->register_trigger(trigger);
+    INPUTGENERATOR::Pythia8[0]->set_trigger_OR();
+    Input::ApplysPHENIXBeamParameter(INPUTGENERATOR::Pythia8[0]);
+*/
+/*
+    PHPy8ParticleTrigger * p8_hf_signal_trigger = new PHPy8ParticleTrigger("thisTrigger");
+    p8_hf_signal_trigger->SetPtLow(0.);
+    p8_hf_signal_trigger->SetPtHigh(5.);
+    p8_hf_signal_trigger->SetYHighLow(1, -1); // sample a rapidity range higher than the sPHENIX tracking pseudorapidity
+    p8_hf_signal_trigger->SetStableParticleOnly(false); // process unstable particles that include quarks
+    p8_hf_signal_trigger->SetParticleRadialDecayVertexHigh(4);
     p8_hf_signal_trigger->AddParticles(particleID);
     p8_hf_signal_trigger->AddParticles(-1*particleID);
     p8_hf_signal_trigger->PrintConfig();
     INPUTGENERATOR::Pythia8[0]->register_trigger(p8_hf_signal_trigger);
     INPUTGENERATOR::Pythia8[0]->set_trigger_OR();
-  
-    Input::ApplysPHENIXBeamParameter(INPUTGENERATOR::Pythia8);
+*/
+    vector<int> particleList;
+    if (channel == "Kshort2pipi") particleList = {211, -211};
+    else if (channel == "Lambda2ppi") particleList = {2212, -211};
+    else if (channel == "cascade") particleList = {3122, -211};
+    else particleList = {-2212, 211};
+    
+    for (unsigned int i = 0; i < particleList.size(); ++i)
+    {
+      string trigger_name = "particle_trigger_" + to_string(i);
+      PHPy8ParticleTrigger * p8_hf_signal_trigger = new PHPy8ParticleTrigger(trigger_name.c_str());
+      p8_hf_signal_trigger->SetEtaHighLow(abs_eta, -1*abs_eta);
+      p8_hf_signal_trigger->SetPtLow(0.15);
+      p8_hf_signal_trigger->SetParentRadialDecayVertexHigh(4);
+      p8_hf_signal_trigger->SetStableParticleOnly(false);
+      p8_hf_signal_trigger->AddParents(particleID);
+      p8_hf_signal_trigger->AddParticles(particleList[i]);
+      p8_hf_signal_trigger->PrintConfig();
+      INPUTGENERATOR::Pythia8[0]->register_trigger(p8_hf_signal_trigger);
+    }
+    INPUTGENERATOR::Pythia8[0]->set_trigger_AND();
   }
+
+
+  Input::ApplysPHENIXBeamParameter(INPUTGENERATOR::Pythia8[0]);
 
   InputRegister();
 
   //CDB flags and such
 
   Enable::CDB = true;
-  rc->set_StringFlag("CDB_GLOBALTAG","ProdA_2024");
+  rc->set_StringFlag("CDB_GLOBALTAG","MDC2");
+  //rc->set_StringFlag("CDB_GLOBALTAG","ProdA_2024");
   rc->set_uint64Flag("TIMESTAMP",1);
   rc->set_IntFlag("RUNNUMBER",1);
 
@@ -146,8 +191,10 @@ int Fun4All_HFG(std::string processID = "0", std::string channel = "Kshort2pipi"
   //Tagging stuff
   DecayFinder *myFinder = new DecayFinder("myFinder");
   myFinder->Verbosity(INT_MAX);
-  if (channel == "Kshort2pipi") myFinder->setDecayDescriptor("K_S0 -> pi^- pi^+");
-  else myFinder->setDecayDescriptor("[Lambda0 -> proton^+ pi^-]cc");
+  if (channel == "Kshort2pipi") myFinder->setDecayDescriptor(pipi_decay_descriptor);
+  else if (channel == "Lambda2ppi") myFinder->setDecayDescriptor(ppi_decay_descriptor);
+  else if (channel == "cascade") myFinder->setDecayDescriptor(cascade_decay_descriptor);
+  else myFinder->setDecayDescriptor(anti_ppi_decay_descriptor);
   myFinder->saveDST(1);
   myFinder->allowPi0(1);
   myFinder->allowPhotons(1);
@@ -174,12 +221,13 @@ int Fun4All_HFG(std::string processID = "0", std::string channel = "Kshort2pipi"
 
   auto vtxfinder = new PHSimpleVertexFinder;
   vtxfinder->Verbosity(0);
-  vtxfinder->setDcaCut(0.5);
+  vtxfinder->setDcaCut(1);
   vtxfinder->setTrackPtCut(-99999.);
   vtxfinder->setBeamLineCut(1);
   vtxfinder->setTrackQualityCut(1000000000);
-  vtxfinder->setNmvtxRequired(2);
-  vtxfinder->setOutlierPairCut(0.1);  
+  vtxfinder->setRequireMVTX(false);
+  //vtxfinder->setNmvtxRequired(2);
+  vtxfinder->setOutlierPairCut(1);  
   se->registerSubsystem(vtxfinder);
 
   Global_Reco();
@@ -198,12 +246,15 @@ int Fun4All_HFG(std::string processID = "0", std::string channel = "Kshort2pipi"
 
   output_dir = outDir;
 
-  if (run_pipi_reco) create_hf_directories(pipi_reconstruction_name, pipi_output_dir, pipi_output_reco_file);
-  if (run_ppi_reco) create_hf_directories(ppi_reconstruction_name, ppi_output_dir, ppi_output_reco_file);
-
+  if (run_pipi_reco) create_hf_directories(pipi_reconstruction_name, pipi_output_dir, pipi_output_reco_file, processID);
+  if (run_ppi_reco) create_hf_directories(ppi_reconstruction_name, ppi_output_dir, ppi_output_reco_file, processID);
+  if (run_anti_ppi_reco) create_hf_directories(anti_ppi_reconstruction_name, anti_ppi_output_dir, anti_ppi_output_reco_file, processID);
+  if (run_cascade_reco) create_hf_directories(cascade_reconstruction_name, cascade_output_dir, cascade_output_reco_file, processID);
 
   if (run_pipi_reco) reconstruct_pipi_mass();
   if (run_ppi_reco) reconstruct_ppi_mass();
+  if (run_anti_ppi_reco) reconstruct_ppi_mass();
+  if (run_cascade_reco) reconstruct_Lambdapi_mass();
 /*
   //Output file handling
   makeDirectory = "mkdir -p " + outDir + "DST";
@@ -246,6 +297,8 @@ int Fun4All_HFG(std::string processID = "0", std::string channel = "Kshort2pipi"
 
   if (run_pipi_reco) end_kfparticle(pipi_output_reco_file, pipi_output_dir);
   if (run_ppi_reco) end_kfparticle(ppi_output_reco_file, ppi_output_dir);
+  if (run_anti_ppi_reco) end_kfparticle(ppi_output_reco_file, ppi_output_dir);
+  if (run_cascade_reco) end_kfparticle(cascade_output_reco_file, cascade_output_dir);
 
   gSystem->Exit(0);
 

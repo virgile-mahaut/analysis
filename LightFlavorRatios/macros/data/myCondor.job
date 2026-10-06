@@ -1,0 +1,15 @@
+Universe           = vanilla
+Notification       = Never
+PeriodicHold       = (NumJobStarts>=1 && JobStatus == 1)
+Initialdir         = .
+Executable         = $(Initialdir)/runHFreco_TPConly.sh
+request_memory     = 6GB
+Priority           = 20
+job_lease_duration = 3600
+OutDir             = /sphenix/tg/tg01/hf/mjpeters/LightFlavorProduction/TPConly/
+JobBatchName       = KFPReco
+Output             = $(Initialdir)/log/job-Data-$(Cluster)-$(Process).out
+Error              = $(Initialdir)/log/job-Data-$(Cluster)-$(Process).err
+Log                = /tmp/log_mjpeters/job-Data-$(Cluster)-$(Process).log
+Arguments          = $(file) $(OutDir) 0
+Queue file from fileLists/file_run79516_37.list

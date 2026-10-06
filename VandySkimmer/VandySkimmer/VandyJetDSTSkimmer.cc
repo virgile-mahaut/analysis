@@ -67,9 +67,11 @@ int VandyJetDSTSkimmer::InitRun(PHCompositeNode *topNode)
     return Fun4AllReturnCodes::ABORTRUN;
   }
 
-  for(int i=0; i<4; i++)
+  for(int i=0; i<5; i++)
   {
     jets[i] = findNode::getClass<JetContainer>(topNode, std::format("AntiKt_r{}{}",jetRStr[i],(m_doCalib ? "_calib" : "")).c_str());
+    if(m_doCalib) jetsUncalib[i] = findNode::getClass<JetContainer>(topNode, std::format("AntiKt_r{}",jetRStr[i]).c_str());
+
     if (!jets[i])
     {
       std::cout << "VandyJetDSTSkimmer::Init - Error - Can't find Jet Node " << std::format("AntiKt_r{}{}",jetRStr[i],(m_doCalib ? "_calib" : "")).c_str() << " therefore no selection can be made" << std::endl;
@@ -87,7 +89,7 @@ int VandyJetDSTSkimmer::InitRun(PHCompositeNode *topNode)
       return Fun4AllReturnCodes::ABORTRUN;
     }
 
-    for(int i=0; i<4; i++)
+    for(int i=0; i<5; i++)
     {
       truthJets[i] = findNode::getClass<JetContainer>(topNode, std::format("AntiKt_Truth_r{}",jetRStr[i]).c_str());
       if (!truthJets[i])
@@ -96,12 +98,19 @@ int VandyJetDSTSkimmer::InitRun(PHCompositeNode *topNode)
         return Fun4AllReturnCodes::ABORTRUN;
       }
     }
-
+    std::cout<<m_sampleName<<std::endl;
     for(int s=0; s<8; s++)
     {
       if(m_sampleName == sampleNames[s])
       {
         sampleNumber = s;
+      }
+      else if(m_sampleName.find("Herwig") != std::string::npos)
+      {
+	 if(m_sampleName == HerwigsampleNames[s])
+	      {
+		sampleNumber = s;
+	      }
       }
     }
     if(sampleNumber == -999)
@@ -120,16 +129,20 @@ int VandyJetDSTSkimmer::InitRun(PHCompositeNode *topNode)
   T->Branch("EventInfo",&m_eventInfo);
   T->Branch("TowerInfo",&m_towerInfo);
   T->Branch("TopoClusters",&m_topoclusters);
-  for(int i=0; i<4; i++)
+  for(int i=0; i<5; i++)
   {
     T->Branch(std::format("JetInfo_r{}",jetRStr[i]).c_str(),&m_jetInfo[i]);
   }
   if(m_doSim)
   {
     T->Branch("TruthParticles",&m_truthParticles);
-    for(int i=0; i<4; i++)
+    T->Branch("TruthTowers", &m_truthtowers);
+
+    for(int i=0; i<5; i++)
     {
       T->Branch(std::format("TruthJetInfo_r{}",jetRStr[i]).c_str(),&m_truthJetInfo[i]);
+      T->Branch(std::format("TruthTowerJetInfo_r{}",jetRStr[i]).c_str(),&m_truthtowerJetInfo[i]);
+      
     }
   }
 
@@ -162,36 +175,186 @@ int VandyJetDSTSkimmer::InitRun(PHCompositeNode *topNode)
   return Fun4AllReturnCodes::EVENT_OK;
 
 }
+void VandyJetDSTSkimmer::getTruthTowers()
+{
+	//tower the truth particles into IHCAL tower->sizes
+	int nTowers = towerInfoContainers[2]->size();
+	std::map<int, std::pair<float, float>> etabinedges {};
+	std::map<int, std::pair<float, float>> phibinedges {};
+	std::map<int, float> etacenters {};
+	std::map<int, float> phicenters {};
+//	float r = 0;
+	for(int i=0; i<nTowers; i++)
+	{
+		auto key = towerInfoContainers[2]->encode_key(i);
+		int etaBin = towerInfoContainers[2]->getTowerEtaBin(key);
+		int phiBin = towerInfoContainers[2]->getTowerPhiBin(key);
+		if(etabinedges.find(etaBin) == etabinedges.end()){
+		       	std::pair<float, float> etaEdges = geoms[2]->get_etabounds(etaBin);
+			float etaCenter = geoms[2]->get_etacenter(etaBin);
+			etabinedges[etaBin] = etaEdges;
+			etacenters[etaBin]= etaCenter;
+		}
+		if(phibinedges.find(phiBin) == phibinedges.end()){
+			std::pair<float, float> phiEdges = geoms[2]->get_phibounds(phiBin);
+			float phiCenter = geoms[2]->get_phicenter(phiBin);
+			phibinedges[phiBin] = phiEdges;
+			phicenters[phiBin] = phiCenter;
+		}
+	//	if(i==0) r = geoms[2]->get_radius();
+	}
+	std::map<std::pair<int, int>, Tower> tt {};
+	for(auto p:m_truthParticles)
+	{
+		float phi = std::atan2(p.py(), p.px());
+		float eta = std::asinh(p.pz() / p.e());
+		int phibin = -1;
+		int etabin = -1;
+		for(auto pb:phibinedges)
+		{
+			if(phi < pb.second.second && phi > pb.second.first){
+			       	phibin = pb.first;
+				break;
+			}
+		}
+		for(auto eb:etabinedges)
+		{
+			if(eta < eb.second.second && eta > eb.second.first){
+				etabin = eb.first;
+				break;
+			}
+		}
+		std::pair<int, int> bins {phibin, etabin}; 
+		if(tt.find(bins) == tt.end()) tt[bins] = p;
+		else{
+			tt[bins].set_e(tt[bins].e() + p.e());
+			tt[bins].set_px(tt[bins].px() + p.px());
+			tt[bins].set_px(tt[bins].py() + p.py());
+			tt[bins].set_px(tt[bins].pz() + p.pz());
+		}	
+	}
+	for(auto t:tt) m_truthtowers.push_back(t.second);
+	return;
+}
+void VandyJetDSTSkimmer::maketruthtowerJets()
+{
+	//use the truth towers to build jets
+	std::vector<fastjet::PseudoJet> jet02 {}; 
+	fastjet::JetDefinition fj02 (fastjet::antikt_algorithm, 0.2);
+	std::vector<fastjet::PseudoJet> jet03 {}; 
+	fastjet::JetDefinition fj03 (fastjet::antikt_algorithm, 0.3);
+	std::vector<fastjet::PseudoJet> jet04 {}; 
+	fastjet::JetDefinition fj04 (fastjet::antikt_algorithm, 0.4);
+	std::vector<fastjet::PseudoJet> jet05 {}; 
+	fastjet::JetDefinition fj05 (fastjet::antikt_algorithm, 0.5);
+	std::vector<fastjet::PseudoJet> jet06 {}; 
+	fastjet::JetDefinition fj06 (fastjet::antikt_algorithm, 0.6);
 
+	std::vector<std::vector<fastjet::PseudoJet>> twjets {jet02, jet03, jet04, jet05, jet06};
+	std::vector<fastjet::JetDefinition> jetdefs {fj02, fj03, fj04, fj05, fj06};
+//	std::cout<<__LINE__<<std::endl;
+
+	std::vector<fastjet::PseudoJet> truthinput {};
+	for(auto p:m_truthtowers) truthinput.push_back(fastjet::PseudoJet(p.px(), p.py(), p.pz(), p.e()));
+//	std::cout<<__LINE__<<std::endl;
+	for(int i=0; i<(int)twjets.size(); i++)
+	{
+		fastjet::ClusterSequence cls(truthinput, jetdefs[i]);
+		twjets[i]=cls.inclusive_jets();
+	}
+	//std::cout<<m_truthtowerJetInfo->size() <<std::endl;
+	for(int i=0; i<5/*(int)m_truthtowerJetInfo->size()*/; i++)
+	{
+		std::vector<JetInfo> jts {};
+//		std::cout<<__LINE__<<std::endl;
+		for(auto p:twjets.at(i))
+		{
+			JetInfo jt {};
+			jt.set_px(p.px());
+			jt.set_py(p.py());
+			jt.set_pz(p.pz());
+			jt.set_e(p.e());
+			jt.set_pt(p.perp());
+			std::vector<int> constits {};
+			/*try{
+				std::vector<fastjet::PseudoJet> c =p.constituents();
+				std::cout<<__LINE__<<std::endl;
+				for(auto j:c)//p.constituents())
+				{
+					std::cout<<"Component user index: " <<j.user_index()<<std::endl;
+					constits.push_back(j.user_index());
+		       		}
+				std::cout<<__LINE__<<std::endl;
+      				jt.set_constituents(constits);
+			}
+			catch(std::exception& e) {};*/
+//			float hcaloFrac=; figuring this out is a night mare, do I just set it at the tower level by appromating in the same way as with the truth?
+//			std::cout<<__LINE__<<std::endl;
+			jt.set_hCaloFrac(-999);
+			jts.push_back(jt);
+		}	
+//		std::cout<<std::format("In R=0.{} Jets we find {} tower jets", i+2, jts.size()) <<std::endl;
+		m_truthtowerJetInfo[i]=jts;
+	}
+	return;
+
+}
 //____________________________________________________________________________..
 int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
 {
 
 
   num++;
-  if(Verbosity())
-  {
+ // if(Verbosity())
+ // {
      std::cout << "working on event " << num << "   number of removed events so far: " << nRem << std::endl;
-  }
+ // }
 
 
   m_towerInfo.clear();
   m_truthParticles.clear();
+  m_truthtowers.clear();
   m_towerInfo_map.clear();
   m_towerInfo_map2.clear();
   m_towerInfoTruth_map.clear();
-  for(int i=0; i<4; i++)
+  for(int i=0; i<5; i++)
   {
     m_jetInfo[i].clear();
     m_truthJetInfo[i].clear();
+    m_truthtowerJetInfo[i].clear();
   }
   m_topoclusters.clear();
+
+  if(vtxMap->empty())
+  {
+    if(Verbosity())  std::cout << "no vertex found" << std::endl;
+    nRem++;
+    return Fun4AllReturnCodes::ABORTEVENT;
+  }
+  std::vector<GlobalVertex*> vertices = vtxMap->get_gvtxs_with_type(vtxTypes);
+  if(vertices.empty() || !vertices.at(0))
+  {
+    if(Verbosity()) std::cout << "no MBD vertex found" << std::endl;
+    nRem++;
+    return Fun4AllReturnCodes::ABORTEVENT;
+  }
+  m_vtx_z = vertices.at(0)->get_z();
+  if (std::abs(m_vtx_z) > m_vtx_cut)
+  {
+    if(Verbosity()) std::cout << "reco vertex not in range \n vertex is " <<m_vtx_z<<" cm off of nominal 0"  << std::endl;
+    nRem++;
+    return Fun4AllReturnCodes::ABORTEVENT;
+  }
+
+  //set event info
+  m_eventInfo->set_z_vtx(m_vtx_z);
+  m_eventInfo->set_ZDC_rate(m_ZDC_coincidence);
 
   if(m_doSim)
   {
     //get leading truth pT and skip events where it is outside the range for each sample for ALL jet R
-    bool goodTruthLeadJet[4] = {false, false, false, false};
-    for(int r=0; r<4; r++)
+    bool goodTruthLeadJet[5] = {false, false, false, false, false};
+    for(int r=0; r<5; r++)
     {
       float lead_pT = -999;
       for(auto jet : *truthJets[r])
@@ -201,7 +364,7 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       }
       if(lead_pT >= truthJetR_pTMin[r][sampleNumber] && lead_pT < truthJetR_pTMin[r][sampleNumber+1]) goodTruthLeadJet[r] = true;
     }
-    if(!goodTruthLeadJet[0] && !goodTruthLeadJet[1] && !goodTruthLeadJet[2] && !goodTruthLeadJet[3])
+    if(!goodTruthLeadJet[0] && !goodTruthLeadJet[1] && !goodTruthLeadJet[2] && !goodTruthLeadJet[3] && !goodTruthLeadJet[4])
     {
       if(Verbosity())
       {
@@ -210,9 +373,9 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       nRem++;
       return Fun4AllReturnCodes::ABORTEVENT;
     }
-
+    
     m_eventInfo->set_cross_section(cs[sampleNumber]);
-
+    if(m_sampleName.find("Herwig") != std::string::npos) m_eventInfo->set_cross_section(Herwigcs[sampleNumber]);
     int truthVtxIndex = truthParticles->GetPrimaryVertexIndex();
     if(truthParticles->GetPrimaryVtx(truthVtxIndex))
     {
@@ -220,11 +383,11 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
     }
     m_eventInfo->set_z_vtx_truth(m_vtx_z_truth);
 
-    for(int r=0; r<4; r++)
+    for(int r=0; r<5; r++)
     {
       if(goodTruthLeadJet[r])
       {
-        std::pair<float,float> dijetTruth = isGoodTruthDijet(r);
+        std::pair<float,float> dijetTruth = isGoodTruthDijet(r, topNode);
         m_eventInfo->set_dijetTruth_event(r, (dijetTruth.first >= 5.0 && dijetTruth.second >= 5.0 ? true : false));
         m_eventInfo->set_leadTruth_pT(r, dijetTruth.first);
         m_eventInfo->set_subleadTruth_pT(r, dijetTruth.second);
@@ -238,7 +401,7 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
     }
 
     //Particles
-    auto range = truthParticles->GetPrimaryParticleRange();
+    auto range = truthParticles->GetSPHENIXPrimaryParticleRange();
     for(auto it=range.first; it!=range.second; ++it)
     {
       PHG4Particle* p = it->second;
@@ -253,10 +416,10 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       tmpTower.set_calo(4);
 
       m_truthParticles.push_back(tmpTower);
-      m_towerInfoTruth_map[std::make_pair(4, p->get_track_id())] = m_towerInfo.size() - 1;
+      m_towerInfoTruth_map[std::make_pair(4, p->get_track_id())] = m_truthParticles.size() - 1;
     }
-
-    for(int r=0; r<4; r++)
+ 	getTruthTowers();
+    for(int r=0; r<5; r++)
     {
       for(auto jet : *truthJets[r])
       {
@@ -287,15 +450,21 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
             cons.push_back(m_towerInfoTruth_map[lookup_key]);
           }
         }
-        JetInfo tmpJet;
+        
+	      JetInfo tmpJet;
         tmpJet.set_px(jet->get_px());
         tmpJet.set_py(jet->get_py());
         tmpJet.set_pz(jet->get_pz());
         tmpJet.set_e(jet->get_e());
+	tmpJet.set_pt(jet->get_pt());
+        tmpJet.set_pt_uncalib(jet->get_pt());
+        tmpJet.set_hCaloFrac(getHCalFracTruth(jet, topNode));
         tmpJet.set_constituents(cons);
+//	getJetParentParton(jet, &tmpJet, topNode);	
         m_truthJetInfo[r].push_back(tmpJet);
      }
     }
+    maketruthtowerJets();
   }//end of all truth stuff
   else
   {
@@ -307,6 +476,8 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       m_eventInfo->set_subleadTruth_pT(r,-999);
     }
   }
+
+  if(Verbosity()) std::cout << "done with sim" << std::endl;
 
   PHNodeIterator itNode(topNode);
   PHCompositeNode* parNode = dynamic_cast<PHCompositeNode*>(itNode.findFirst("PHCompositeNode","PAR"));
@@ -333,6 +504,14 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       std::cout << "No flagNode for bbfqa - abort run" << std::endl;
       return Fun4AllReturnCodes::ABORTRUN;
     }
+
+    m_eventInfo->set_leadJetTime(m_cutParams.get_double_param("maxJett"));
+    m_eventInfo->set_subJetTime(m_cutParams.get_double_param("subJett"));
+    m_eventInfo->set_MBDTime(m_cutParams.get_double_param("mbd_time"));
+
+    m_eventInfo->set_leadJetTimePass((bool) m_cutParams.get_int_param("passLeadtCut"));
+    m_eventInfo->set_leadJetMBDDeltatPass((bool) m_cutParams.get_int_param("passMbdDtCut"));
+    m_eventInfo->set_dijetDeltatPass((bool) m_cutParams.get_int_param("passDeltatCut"));
   }
   
   bool goodTrigger = false;
@@ -351,37 +530,8 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
   }
   else goodTrigger = true; //trigger emulator not functioning on sim
   
-  bool goodVtx = goodTrigger;
-  if(goodTrigger)
-  {
-    if(vtxMap->empty())
-    {
-      if(Verbosity())  std::cout << "no vertex found" << std::endl;
-      goodVtx = false;
-    }
-    if(goodVtx)
-    {
-      std::vector<GlobalVertex*> vertices = vtxMap->get_gvtxs_with_type(vtxTypes);
-      if(vertices.empty() || !vertices.at(0))
-      {
-        if(Verbosity()) std::cout << "no MBD vertex found" << std::endl;
-        goodVtx = false;
-      }
-      else
-      {
-        m_vtx_z = vertices.at(0)->get_z();
-        if (std::abs(m_vtx_z) > m_vtx_cut)
-        {
-          if(Verbosity()) std::cout << "vertex not in range \n vertex is " <<m_vtx_z<<" cm off of nominal 0"  << std::endl;
-          goodVtx = false;
-          m_vtx_z = -999;
-        }
-      }
-    }
-  }
-
-  bool goodTiming = goodVtx;
-  if(goodVtx && !m_doSim)
+  bool goodTiming = goodTrigger;
+  if(goodTrigger && !m_doSim)
   {
     //timing cut
     if(!m_cutParams.get_int_param("passLeadtCut"))
@@ -425,13 +575,9 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
     }
   }
 
-  //set event info
-  m_eventInfo->set_z_vtx(m_vtx_z);
-  m_eventInfo->set_ZDC_rate(m_ZDC_coincidence);
-
   if(m_doSim && !goodJet)
   {
-    for(int r=0; r<4; r++)
+    for(int r=0; r<5; r++)
     {
       m_eventInfo->set_dijet_event(r, false);
       m_eventInfo->set_lead_pT(r, -999);
@@ -448,13 +594,17 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
     return Fun4AllReturnCodes::ABORTEVENT;
   }
 
-  for(int r=0; r<4; r++)
+  if(Verbosity()) std::cout << "good reco event" << std::endl;
+
+  for(int r=0; r<5; r++)
   {
     std::pair<float, float> dijet = isGoodDijet(r);
     m_eventInfo->set_dijet_event(r, (dijet.first >= jetR_pTMin[r] && dijet.second >= 5.0 ? true : false));
     m_eventInfo->set_lead_pT(r, dijet.first);
     m_eventInfo->set_sublead_pT(r, dijet.second);
   }
+
+  if(Verbosity()) std::cout << "done with reco dijet" << std::endl;
 
   //store calorimeter towers in vector<Tower> object
   for(int calo = 0; calo < 4; calo++)
@@ -494,6 +644,9 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       m_towerInfo_map2[std::array<int,3> {calo, etaBin, phiBin}] = m_towerInfo.size() - 1;
     }
   }
+
+  if(Verbosity()) std::cout << "done with towers" << std::endl;
+
 
   RawClusterContainer::Map clusterMap = clusters->getClustersMap();
   for(auto entry : clusterMap)
@@ -556,23 +709,39 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
     m_topoclusters.push_back(topocluster);
   }
 
+  if(Verbosity()) std::cout << "done with clusters" << std::endl;
+
+
+ 
   // jet loop
-  for(int r=0; r<4; r++)
+  for(int r=0; r<5; r++)
   {
+    int i=0;
     for(auto jet : *jets[r])
     {
       double posEta = 1.1 - jetR[r];
       double posEtaCorr = correct_eta(posEta, 90.0);
       double negEta = -1.1 + jetR[r];
       double negEtaCorr = correct_eta(negEta, 90.0);
+      Jet *jetUncalib = jetsUncalib[r]->get_jet(i);
+      if(Verbosity())
+      {
+        std::cout << "i: " << i << std::endl;
+        std::cout << "   calib pT: " << jet->get_pt() << "   eta: " << jet->get_eta() << "   phi: " << jet->get_phi() << std::endl;
+        std::cout << "  uncalib pT: " << jetUncalib->get_pt() << "   eta: " << jetUncalib->get_eta() << "   phi: " << jetUncalib->get_phi() << "   nCons: " << jetUncalib->get_comp_vec().size() << std::endl;
+      }
 
       if (jet->get_pt() < m_minJetPt || jet->get_eta() > posEtaCorr || jet->get_eta() < negEtaCorr)
       {
+        i++;
         continue;
       }
 
+      double HCalE = 0.0;
+      double totalE = 0.0;
+
       std::vector<int> cons;
-      for(auto comp : jet->get_comp_vec())
+      for(auto comp : jetUncalib->get_comp_vec())
       {
         int calo = -999;
         
@@ -598,28 +767,44 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
         
         if(calo == -999)
         {
-          continue;
+          i++;
+	        continue;
         }
 
-        //std::cout << "calo: " << calo << "   calo from id: " << unique_id / 10000 << "   channel: " << unique_id - (unique_id / 10000) << std::endl;
         std::pair<int, int> lookup_key {calo, tower_id};
-        //std::pair<int, int> lookup_key {calo, static_cast<int>(unique_id - (unique_id / 10000))};
         if(m_towerInfo_map.find(lookup_key) != m_towerInfo_map.end())
         {
           cons.push_back(m_towerInfo_map[lookup_key]);
+          totalE += m_towerInfo[m_towerInfo_map[lookup_key]].e();
+          if(calo == 2 || calo == 3)
+          {
+            HCalE += m_towerInfo[m_towerInfo_map[lookup_key]].e();
+          }
         }
       }
       JetInfo tmpJet;
       tmpJet.set_px(jet->get_px());
       tmpJet.set_py(jet->get_py());
       tmpJet.set_pz(jet->get_pz());
-      tmpJet.set_e(jet->get_e());
+      tmpJet.set_e(sqrt(pow(jet->get_px(),2) + pow(jet->get_py(),2) + pow(jet->get_pz(),2)));
+      tmpJet.set_pt(jet->get_pt()); 
+      if(m_doCalib) tmpJet.set_pt_uncalib(jetUncalib->get_pt());
+      else tmpJet.set_pt_uncalib(jet->get_pt()); 
+      tmpJet.set_hCaloFrac(HCalE / totalE); 	//need to look at the TF doc to do this properly 
+				//is it a jet by jet quanity or just an event quantity?
       tmpJet.set_constituents(cons);
       m_jetInfo[r].push_back(tmpJet);
+      i++;
     }
   }
 
+  if(Verbosity()) std::cout << "done with jets" << std::endl;
+
+
   T->Fill();
+
+  if(Verbosity()) std::cout << "Filled tree" << std::endl;
+
 
   return Fun4AllReturnCodes::EVENT_OK;
 }
@@ -678,6 +863,11 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
       leadJet = j;
       lead_pT = pT;
     }
+    else if(pT > sublead_pT)
+    {
+      subleadJet = j;
+      sublead_pT = pT;
+    }
   }
 
   if(!leadJet || !subleadJet)
@@ -698,8 +888,8 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
   double posEtaCorr = correct_eta(1.1-jetR[jetR_index], 90.0);
   double negEtaCorr = correct_eta(-1.1+jetR[jetR_index], 90.0);
 
-  double leadEta = leadJet->get_eta();
-  double subleadEta = subleadJet->get_eta();
+  float leadEta = leadJet->get_eta();
+  float subleadEta = subleadJet->get_eta();
 
   if(leadEta > posEtaCorr || leadEta < negEtaCorr || subleadEta > posEtaCorr || subleadEta < negEtaCorr)
   {
@@ -709,6 +899,7 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
   float dPhi = subleadJet->get_phi() - leadJet->get_phi();
   if(dPhi > M_PI) dPhi -= 2*M_PI;
   if(dPhi < -M_PI) dPhi += 2*M_PI;
+  m_eventInfo->set_dijetDeltaPhi(jetR_index, dPhi);
   if(std::abs(dPhi) < 0.75*M_PI)
   {
     return pTs;
@@ -720,9 +911,251 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
   return pTs;
 
 }
+float VandyJetDSTSkimmer::getHCalFracTruth(Jet* jet, PHCompositeNode *topNode) 
+{
+	//select the particle ID and match to the detector
+	float hadronic_energy=0., electromagnetic_energy=0.;
+//	float jet_phi=jet->get_phi(), jet_eta=jet->get_eta();
+//	float i_e=0.;
+	try{
+		findNode::getClass<PHG4TruthInfoContainer>(topNode, "G4TruthInfo");
+	}
+	catch(std::exception& e){
+		std::cout<<"Could not find G4TruthInfo node"<<std::endl;
+		return 0.;
+	}
+	auto truth_particles_p=findNode::getClass<PHG4TruthInfoContainer>(topNode, "G4TruthInfo");
+	try{
+		truth_particles_p->GetMap();
+	}
+	catch(std::exception& e){
+		std::cout<<"Could not find particle map" <<std::endl;
+		return 0.;
+	}
+	std::map<int, PHG4Particle*> truth_particles;
+	for(const auto& a:truth_particles_p->GetMap())
+	       	truth_particles[a.first]=a.second;
+	for(auto& iter:jet->get_comp_vec()){
+		Jet::SRC source=iter.first;
+		if(source != Jet::SRC::PARTICLE && source != Jet::SRC::CHARGED_PARTICLE && source != Jet::SRC::HEPMC_IMPORT){
+			//don't have a source particle so skip it
+			continue;
+		}
+		else{
+			unsigned int id=iter.second;
+			if(truth_particles.find(id) == truth_particles.end()){
+				continue;
+			}
+			else{
+				PHG4Particle* particle = truth_particles.at(id);
+				int pid=particle->get_pid();
+				if(abs(pid) == 11 || pid== 22){ 
+					//electrons, positrons and photons get put in the emcal
+					electromagnetic_energy+=particle->get_e();
+//					float particle_phi=std::atan2(particle->get_py(), particle->get_px());
+//					float particle_eta=std::atanh(particle->get_pz()/particle->get_e());
+				}
+				else if(abs(pid) > 11 && abs(pid) <= 18){
+					//don't count neutrinos, muons, tau
+					hadronic_energy+=particle->get_e();
+//					float particle_phi=std::atan2(particle->get_py(), particle->get_px());
+//					float particle_eta=std::atanh(particle->get_pz()/particle->get_e());
+				}
+			}
+		}
+	}
+	//assume that the hcal energy split is consistent with the whole detector energy split 
+	float ohcal_ratio=hadronic_energy/(hadronic_energy+electromagnetic_energy);
+	return ohcal_ratio;
+	//float emcal_ratio=electromagnetic_energy/(hadronic_energy+electromagnetic_energy);
+	
+}
+float VandyJetDSTSkimmer::getDeltatTruth(float lead_ratio, float subl_ratio)
+{
+	float lead_t = OHCALrat2t(lead_ratio);
+	float subl_t = OHCALrat2t(subl_ratio);
+	float delta_t = lead_t - subl_t;
+	return delta_t; //closest approximation using the TF1 report 	
+}
+void VandyJetDSTSkimmer::getJetParentParton(Jet* jet, JetInfo* jetinfo, PHCompositeNode* topNode)
+{
+	//find the earliest common ancestor of all the partons in the jet 
+	std::vector<std::vector<HepMC::GenParticle*>> parton_parents; 
+	auto hepMCParticles=findNode::getClass<PHHepMCGenEventMap>(topNode, "PHHepMCGenEventMap");
+	
+	if(!truthParticles || !hepMCParticles) return;
+	
+	HepMC::GenEvent*  hepMCevent {nullptr}; 
+	for(PHHepMCGenEventMap::ConstIter eventIter = hepMCParticles->begin(); eventIter != hepMCParticles->end(); ++eventIter)
+	{
+		auto hc=eventIter->second;
+		if(!hc) continue;
+		hepMCevent=hc->getEvent();
+	}
+	if(!hepMCevent) return;
 
+
+	std::map<int, PHG4Particle*> truthParticlesMap;
+	std::map<int, HepMC::GenParticle*> truthHepMCMap;
+	auto range = truthParticles->GetSPHENIXPrimaryParticleRange();
+        for(auto it=range.first; it!=range.second; ++it)
+	{
+		auto a = it->second; 
+		if(!a) continue;
+		truthParticlesMap[it->first]=a;
+	}
+	std::vector<HepMC::GenParticle*> jet_final_state {};
+       	std::vector<PHG4Particle*> jetPHg4 {};	
+	for(auto p:jet->get_comp_vec())
+	{
+		Jet::SRC source = p.first;
+		if( source == Jet::SRC::PARTICLE || 
+				source == Jet::SRC::CHARGED_PARTICLE || 
+				source == Jet::SRC::HEPMC_IMPORT)
+		{
+			unsigned int id = p.second;
+			if( truthParticlesMap.find(id) != truthParticlesMap.end() ) jetPHg4.push_back(truthParticlesMap.at(id));
+		}
+	}
+	for(HepMC::GenEvent::particle_const_iterator iter=hepMCevent->particles_begin(); iter !=hepMCevent->particles_end(); ++iter){
+		if(!(*iter)) continue;
+		int bc = (*iter)->barcode();
+		truthHepMCMap[bc] = *iter;
+	}
+	
+	for(auto p:jetPHg4)
+	{
+		auto bc = p->get_barcode();
+		if( truthHepMCMap.find(bc) != truthHepMCMap.end() ) jet_final_state.push_back(truthHepMCMap[bc]);
+		else{
+			//attepmpt to position match if barcode doesnt work
+			for(auto hp:truthHepMCMap)
+			{
+				auto etaHP 	= hp.second->momentum().pseudoRapidity();
+			 	auto phiHP	= hp.second->momentum().phi();
+				auto etaPG	= std::atanh(p->get_pz()/(std::sqrt( std::pow(p->get_px(),2) +std::pow(p->get_py(),2) + std::pow(p->get_pz(),2))));
+				auto phiPG	= std::atan2(p->get_py(), p->get_px());	
+				if( etaHP == etaPG && phiHP == phiPG ) jet_final_state.push_back(hp.second);
+			}
+		}
+	}
+	std::cout<<"There are " <<jet->get_comp_vec().size() <<" particles in the jet final state" <<std::endl;
+	for(auto p: jet_final_state)
+	{
+		std::vector<HepMC::GenParticle*> ancestors {};
+		ancestors = getFinalStateAncestors(p, hepMCevent);
+		parton_parents.push_back(ancestors);
+	}
+	HepMC::GenParticle* parent = findCommonAncestor(parton_parents);
+	if(!parent){
+	       std::cout<<"Bad parent" <<std::endl;
+	       jetinfo->set_parentPID(-999);
+	       jetinfo->set_isQuark(false);
+	       jetinfo->set_parent("");
+	       return;
+	}
+	int pid = std::abs(parent->pdg_id());
+	jetinfo->set_parentPID(pid);
+	if(pid < 9 ) 
+	{
+		jetinfo->set_isQuark(true);
+		std::string quark_label {""};
+		if(pid == 1) quark_label = "down";
+		else if(pid == 2) quark_label = "up";
+		else if(pid == 3) quark_label = "up";
+		else if(pid == 4) quark_label = "up";
+		else if(pid == 5) quark_label = "up";
+		else if(pid == 6) quark_label = "up";
+	}
+	else if (pid == 9 || pid == 21) 
+	{
+		jetinfo->set_isQuark(false);
+		jetinfo->set_parent("gluon");
+	}
+
+	return;
+}
+std::vector<HepMC::GenParticle*> VandyJetDSTSkimmer::getFinalStateAncestors(HepMC::GenParticle* gp, HepMC::GenEvent* ev) 
+{
+	//get all particles in the parent line of a final state 
+	HepMC::GenVertex* prodvtx = gp->production_vertex();
+	std::map<float, HepMC::GenParticle*> tempparents {};
+	HepMC::GenVertex* sig_proc = ev->signal_process_vertex();	
+	for(HepMC::GenVertex::particles_in_const_iterator it = prodvtx->particles_in_const_begin(); 
+			it != prodvtx->particles_in_const_end(); 
+			++it )
+	{
+		float time = prodvtx->position().t();
+		while (tempparents.find(time) != tempparents.end() ) time+=(time+1)/1000.; //just make sure that there are unique keys
+		tempparents[time]=*it;
+	}
+	for(auto t: tempparents)
+	{
+		auto pt = t.second;
+		prodvtx = pt->production_vertex();
+		if(!prodvtx || !sig_proc ) continue;
+		if(prodvtx->barcode() == sig_proc->barcode()) continue; //do not include the beam particles
+		for(auto it = prodvtx->particles_in_const_begin();
+				it != prodvtx->particles_in_const_end();
+				++it)
+		{
+			if(!((*it)->end_vertex())) continue; //don't grab final state particles by accident
+			float time = prodvtx->position().t();
+			while(tempparents.find(time) != tempparents.end()) time+=time/1000.;
+			tempparents[time]=(*it);
+		}
+
+	}
+	std::vector<HepMC::GenParticle*> parents {};
+	//sort all the ancestors in order from latest to earliest
+	for(auto t=tempparents.rbegin(); t != tempparents.rend(); ++t)
+	{
+		parents.push_back(t->second); //preserve ordering of the time 
+	}
+	return parents;
+}
+HepMC::GenParticle* VandyJetDSTSkimmer::findCommonAncestor( std::vector<std::vector<HepMC::GenParticle*> > Jettree)
+{
+	//find the latest common ancestor of all final state particles
+	HepMC::GenParticle* parent {nullptr};
+	bool isCommon 	= false; 
+	bool foundCommon= false;
+	auto j = Jettree.begin();
+	for(auto p:*j)
+	{
+		isCommon=true;
+		int i=0;
+		while(isCommon)
+		{
+			for(auto j2=Jettree.begin()+1; j2 != Jettree.end(); ++j2)
+			{
+				i++;
+				for(auto p2:*j2)
+				{
+					if( p->barcode() == p2->barcode() )
+					{
+						foundCommon = true;
+						break;
+					}
+				}
+				if( !foundCommon || i > 10  )
+				{
+					isCommon = false;
+					break;
+				}
+			}
+			if(!isCommon || i > 10 ) break;
+		}
+		if(isCommon){
+			std::cout<<p->pdg_id()<<std::endl;
+			parent = p;
+			break;
+		}
+	}
+	return parent;
+}
 //____________________________________________________________________________..
-std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet(int jetR_index)
+std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet(int jetR_index, PHCompositeNode *topNode)
 {
   std::pair<float, float> pTs {-999, -999};
 
@@ -749,6 +1182,11 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet(int jetR_index)
       leadJet = j;
       lead_pT = pT;
     }
+    else if(pT > sublead_pT)
+    {
+      subleadJet = j;
+      sublead_pT = pT;
+    }
   }
 
   if(!leadJet || !subleadJet)
@@ -774,11 +1212,14 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet(int jetR_index)
   float dPhi = subleadJet->get_phi() - leadJet->get_phi();
   if(dPhi > M_PI) dPhi -= 2*M_PI;
   if(dPhi < -M_PI) dPhi += 2*M_PI;
+  m_eventInfo->set_dijetDeltaPhiTruth(jetR_index, dPhi);
   if(std::abs(dPhi) < 0.75*M_PI)
   {
     return pTs;
   }
-
+  float deltaT = getHCalFracTruth(leadJet, topNode) - getHCalFracTruth(subleadJet, topNode);
+  m_eventInfo->set_dijetDeltatTruth(jetR_index, deltaT);
+  m_eventInfo->set_dijetDeltatTruth(jetR_index, std::abs(deltaT) < 5 ? true : false ); 
   pTs.first = lead_pT;
   pTs.second = sublead_pT;
 
@@ -810,3 +1251,4 @@ fastjet::PseudoJet VandyJetDSTSkimmer::get_PseudoJet(double eta, double phi, dou
   fastjet::PseudoJet pj(px, py, pz, E);
   return pj;
 }
+

@@ -1347,6 +1347,8 @@ void DoAllThePlotting(TFile* herwig_file, TFile* pythia_file, std::string trigge
 	std::map<std::string, TDirectory*> top_dirs;
 	std::vector<TCanvas*>* Canvi =new std::vector<TCanvas*> ();
 	tag=trigger_tag;
+	std::cout<<"Tag is: " <<tag<<std::endl;
+	std::cout<<"isPhotons: " <<conf->isPhoton() <<std::endl;
 	//find the relevant directories
 	if(conf->isJet() || trigger_tag.find("MB") != std::string::npos){
 		TDirectory* HJets=(TDirectory*)herwig_file->GetDirectory("Jets");

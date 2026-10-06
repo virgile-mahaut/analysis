@@ -1,6 +1,6 @@
 #!/bin/bash
 
-radius_index=(4)
+radius_index=(2 3 4 5 6 8)
 
 for ((r=0; r<${#radius_index[@]}; r++)); do
     rm output_data_r0${radius_index[$r]}.root

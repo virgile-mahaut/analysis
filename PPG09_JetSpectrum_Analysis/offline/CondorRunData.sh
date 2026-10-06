@@ -3,12 +3,10 @@
 source /sphenix/u/hj2552/setup.sh
 
 Run="$1"
-nSeg="$2"
-iSeg="$3"
-radius_value="$4"
+radius_value="$2"
 
-echo "Run: ${Run}, nSeg: ${nSeg}, iSeg: ${iSeg}, radius: ${radius_value}"
+echo "Run: ${Run}, radius: ${radius_value}"
 
-root -l -q -b "analysis_data.C(${Run}, ${nSeg}, ${iSeg}, ${radius_value})"
+root -l -q -b "analysis_data.C(${Run}, ${radius_value})"
 
 echo "JOB COMPLETE!"

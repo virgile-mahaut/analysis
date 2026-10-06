@@ -94,7 +94,7 @@ void HerwigQAPlottingConfig::SetsPhenixHeaderLegend(TLegend* l1, bool isHerwig, 
 	else l1->AddEntry("", "Fully produced Pythia8", "");
 //	if (triggerinfo.find("none")== std::string::npos) 
 //		l1->AddEntry("", Form("%s, k_{T}^{min} [#hat{p}_{T}] = %.3g GeV", triggerinfo.c_str(), lookupTrigger(triggerinfo)), "");
-	if(jettype.find("null") != std::string::npos)  l1->AddEntry("", jettype.c_str(), "");
+	if(jettype.find("null") == std::string::npos)  l1->AddEntry("", jettype.c_str(), "");
 	l1->SetTextSize(0.05f);
 	return;
 }
@@ -150,7 +150,7 @@ void HerwigQAPlottingConfig::ScaleXS(std::vector<TH1I*>* histograms, bool isHerw
 	{
 		if(isHerwig) histograms->at(i)->Scale(HW_XS);
 		else histograms->at(i)->Scale(PY_XS);
-		histograms->at(i)->SetYTitle("#sigma [nb]");
+		histograms->at(i)->SetYTitle("#sigma [pb]");
 	}
 }
 void HerwigQAPlottingConfig::ScaleXS(std::vector<TH1F*>* histograms, bool isHerwig)
@@ -159,19 +159,19 @@ void HerwigQAPlottingConfig::ScaleXS(std::vector<TH1F*>* histograms, bool isHerw
 	{
 		if(isHerwig) histograms->at(i)->Scale(HW_XS);
 		else histograms->at(i)->Scale(PY_XS);
-		histograms->at(i)->SetYTitle("#sigma [nb]");
+		histograms->at(i)->SetYTitle("#sigma [pb]");
 	}
 }
 void HerwigQAPlottingConfig::ScaleXS(TH1I* histograms, bool isHerwig)
 {
 	if(isHerwig) histograms->Scale(HW_XS);
 	else histograms->Scale(PY_XS);	
-	histograms->SetYTitle("#sigma [nb]");
+	histograms->SetYTitle("#sigma [pb]");
 }
 void HerwigQAPlottingConfig::ScaleXS(TH1F* histograms, bool isHerwig)
 {
 	if(isHerwig) histograms->Scale(HW_XS);
 	else histograms->Scale(PY_XS);
-	histograms->SetYTitle("#sigma [nb]");
+	histograms->SetYTitle("#sigma [pb]");
 }
 

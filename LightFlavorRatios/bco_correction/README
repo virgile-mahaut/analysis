@@ -1,0 +1,9 @@
+Overview
+V0DuplicateReader is a helper class to clean V0 candidates before final analysis. There are two main selections:
+
+deltaBCO (GL1BCO - current event BCO) cut, to strictly select the events within the streaming window
+duplicate removal within the same runNumber and BCO group
+
+The V0DuplicateReader is initialized with the input TTree for K0s and Lambda, and the deltaBCO cut is applied for both. 
+The main macro then loops over all entries, loading each candidate and applying the deltaBCO and duplicate rejection conditions before accepting it.
+Only the selected candidates are used to fill the RooDataSet, which is then passed to the final ratio analysis.

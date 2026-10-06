@@ -1,0 +1,19 @@
+Universe           = vanilla
+Executable         = runPythia.sh
+getenv             = True
+Initialdir         = /sphenix/user/hjheng/sPHENIXRepo/HF-analysis/simulation/pythia8316/examples
+Output             = $(Initialdir)/condorLog/Pythia_ppMinBias_$(Process).out
+Error              = $(Initialdir)/condorLog/Pythia_ppMinBias_$(Process).err
+Log                = $(Initialdir)/condorLog/Pythia_ppMinBias_$(Process).log
+PeriodicHold       = (NumJobStarts>=1 && JobStatus == 1 && !(ON_EVICT_CHECK_RequestMemory_REQUIREMENTS))
+request_memory     = 2000MB
+retry_request_memory_increase = RequestMemory + 2000
+retry_request_memory_max = 10000MB
+Priority           = 20
+job_lease_duration = 3600
+outputDir          = /sphenix/tg/tg01/hf/hjheng/HF-analysis/simulation/Pythia_ppMinBias
+outputHepMCFile    = $(outputDir)/pythia_ppMinBias_$(Process).hepmc
+NeventsPerJob      = 500000
+outputROOTFile     = $(outputDir)/ppMinBias_Xi_fraction_$(Process).root
+Arguments          = $(outputHepMCFile) $(NeventsPerJob) $(Process) $(outputROOTFile)
+Queue 5000

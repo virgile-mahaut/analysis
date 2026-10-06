@@ -41,7 +41,7 @@ R__LOAD_LIBRARY(libsimqa_modules.so)
 
 int Fun4All_HFG(std::string processID = "0", std::string channel = "Kshort2pipi")
 {
-  int nEvents = 100;
+  int nEvents = 0;
   std::string outDir = "./" + channel + "_20260324/";
 
   string makeDirectory = "mkdir -p " + outDir + "hfEff";
@@ -52,7 +52,8 @@ int Fun4All_HFG(std::string processID = "0", std::string channel = "Kshort2pipi"
   se->Verbosity(1);
 
   Fun4AllInputManager *infile = new Fun4AllDstInputManager("DSTin");
-  infile->AddListFile("lists/g4hits.list");
+  string fileName = "lists/g4hits_" + processID + ".list";
+  infile->AddListFile(fileName.c_str());
   se->registerInputManager(infile);
 
   PHRandomSeed::Verbosity(1);

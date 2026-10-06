@@ -1,24 +1,21 @@
+#include <any>
 #include <cmath>
 
-#define RESET   "\033[0m"
-#define BLACK   "\033[30m"      /* Black */
-#define RED     "\033[31m"      /* Red */
-#define GREEN   "\033[32m"      /* Green */
-#define YELLOW  "\033[33m"      /* Yellow */
-#define BLUE    "\033[34m"      /* Blue */
-#define MAGENTA "\033[35m"      /* Magenta */
-#define CYAN    "\033[36m"      /* Cyan */
-#define WHITE   "\033[37m"      /* White */
-#define BOLDBLACK   "\033[1m\033[30m"      /* Bold Black */
-#define BOLDRED     "\033[1m\033[31m"      /* Bold Red */
-#define BOLDGREEN   "\033[1m\033[32m"      /* Bold Green */
-#define BOLDYELLOW  "\033[1m\033[33m"      /* Bold Yellow */
-#define BOLDBLUE    "\033[1m\033[34m"      /* Bold Blue */
-#define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
-#define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
-#define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
-
 using namespace std;
+
+bool saveFinalPlots = true;
+bool printMarkdownTables = true;
+bool printLatexTables = true;
+bool printArrays = true;
+
+//Custom binning scheme for LF analysis
+float lower_bin_bounds[] = {0.5, 0.8, 1.1, 1.4, 1.8, 2.2, 3, 4};
+//float lower_bin_bounds[] = {0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.8, 2.2, 3, 4};
+//Tonys
+//float lower_bin_bounds[] = {0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5, 2, 3, 4};
+//Thomas
+//float lower_bin_bounds[] = {0.75, 1.07, 1.25, 1.49, 2};
+const unsigned int n_variable_bins = sizeof(lower_bin_bounds)/sizeof(lower_bin_bounds[0]) - 1; 
 
 template <typename T>
 string to_string_with_precision(const T a_value, const int n = 0)
@@ -29,11 +26,106 @@ string to_string_with_precision(const T a_value, const int n = 0)
     return out.str();
 }
 
+//Initialise histograms
+TH1F makeHisto(int nBins, float min, float max, string type, string xAxisTitle, string unit, int precision, string yAxisTitle = "Geo. Accept.")
+{
+  string histo_name = type + "_" + xAxisTitle;
+  TH1F myHisto(histo_name.c_str(), histo_name.c_str(), nBins, min, max);
+  
+  if (unit != "") xAxisTitle += " [" + unit +  "]";  
+  myHisto.GetXaxis()->SetTitle(xAxisTitle.c_str());
+
+  float binWidth = (float) (max - min)/nBins;
+  if (unit != "") yAxisTitle += " / " + to_string_with_precision(binWidth, precision) + " " + unit;
+  myHisto.GetYaxis()->SetTitle(yAxisTitle.c_str());
+  
+  return myHisto;
+}
+
+TH1F makeHisto(int nBins, float* min, string type, string xAxisTitle, string unit, int precision, string yAxisTitle = "Geo. Accept.")
+{
+  string histo_name = type + "_" + xAxisTitle;
+  TH1F myHisto(histo_name.c_str(), histo_name.c_str(), nBins, min);
+
+  if (unit != "") xAxisTitle += " [" + unit +  "]";
+  myHisto.GetXaxis()->SetTitle(xAxisTitle.c_str());
+  myHisto.GetYaxis()->SetTitle(yAxisTitle.c_str());
+
+  return myHisto;
+}
+
+//What branches to read into the analysis
+struct variableMap
+{
+  float floats[12];
+  float ints[2];
+
+  //any and variant are a pain here with TBranch 
+  map<string, float> float_vars{
+    {"mother_true_mass", floats[0]},
+    {"mother_true_pT", floats[1]},
+    {"mother_true_eta", floats[3]},
+    {"mother_true_phi", floats[4]},
+    {"mother_true_vz", floats[5]},
+    {"track_1_reco_pT", floats[7]},
+    {"track_2_reco_pT", floats[8]},
+    {"mother_reco_mass", floats[9]},
+    {"mother_true_rap", floats[10]},
+  };
+    
+  map<string, float> int_vars{
+    {"track_1_reco_nmaps", ints[0]},
+    {"track_2_reco_nmaps", ints[1]},
+  };
+};
+
+//What histograms to build for each ratio check
+class histos
+{
+  public:
+    TH1F Lambda0_all;
+    TH1F K_S0_all;
+    TH1F Lambda0_inGeo;
+    TH1F K_S0_inGeo;
+    TH1F ratio;
+    TH1F inv_ratio;
+    bool variable_bins = false;
+    int nBins = 15;
+
+  histos(bool constructor_variable_bins = false, float range = 1., string variable = "", string unit = "")
+  {
+    variable_bins = constructor_variable_bins;
+    if (constructor_variable_bins)
+    {
+      Lambda0_all   = makeHisto(n_variable_bins, lower_bin_bounds, "Lambda0_all", variable.c_str(), unit.c_str(), 1);
+      K_S0_all      = makeHisto(n_variable_bins, lower_bin_bounds, "K_S0_all", variable.c_str(), unit.c_str(), 1);
+      Lambda0_inGeo = makeHisto(n_variable_bins, lower_bin_bounds, "Lambda0_inGeo", variable.c_str(), unit.c_str(), 1);
+      K_S0_inGeo    = makeHisto(n_variable_bins, lower_bin_bounds, "K_S0_inGeo", variable.c_str(), unit.c_str(), 1);
+      ratio         = makeHisto(n_variable_bins, lower_bin_bounds, "ratio", variable.c_str(), unit.c_str(), 1, "#Lambda^{0}/K_{S}^{0} Geo. Accept.");
+      inv_ratio     = makeHisto(n_variable_bins, lower_bin_bounds, "inv_ratio", variable.c_str(), unit.c_str(), 1, "#Lambda^{0}/K_{S}^{0} Geo. Accept.");
+    }
+    else
+    {
+      Lambda0_all   = makeHisto(nBins, -1*range, range, "Lambda0_all", variable.c_str(), unit.c_str(), 1);
+      K_S0_all      = makeHisto(nBins, -1*range, range, "K_S0_all", variable.c_str(), unit.c_str(), 1);
+      Lambda0_inGeo = makeHisto(nBins, -1*range, range, "Lambda0_inGeo", variable.c_str(), unit.c_str(), 1);
+      K_S0_inGeo    = makeHisto(nBins, -1*range, range, "K_S0_inGeo", variable.c_str(), unit.c_str(), 1);
+      ratio         = makeHisto(nBins, -1*range, range, "ratio", variable.c_str(), unit.c_str(), 1, "#Lambda^{0}/K_{S}^{0} Geo. Accept.");
+      inv_ratio     = makeHisto(nBins, -1*range, range, "inv_ratio", variable.c_str(), unit.c_str(), 1, "#Lambda^{0}/K_{S}^{0} Geo. Accept.");
+    }
+  }
+};
+
+histos pT(true, 0, "pT", "GeV");
+histos eta(false, 1.1, "#eta", "");
+histos phi(false, M_PI, "#phi", "");
+histos rap(false, 1.0, "y", "");
+
 template <typename T>
 void savePlots(T myPlot, string plotName, bool logY = false, float yMin = 0, float yMax = 1)
 {
   TGaxis::SetMaxDigits(3);
-  std::string plotPath = "plots/";
+  string plotPath = "plots/";
   string makeDirectory = "mkdir -p " + plotPath;
   system(makeDirectory.c_str());
 
@@ -65,99 +157,27 @@ void savePlots(T myPlot, string plotName, bool logY = false, float yMin = 0, flo
   string extensions[] = {".C", ".pdf", ".png", ".root"};
   for (auto extension : extensions)
   {
-    string output = plotPath + "/" + plotName + extension;
+    string output = plotPath + plotName + extension;
     c1->SaveAs(output.c_str());
   }
 }
 
-TH1F makeHisto(int nBins, float min, float max, string xAxisTitle, string unit, int precision, string yAxisTitle = "Geo. Accept.")
+void processData(string type = "Kshort2pipi")
 {
-  TH1F myHisto(xAxisTitle.c_str(), xAxisTitle.c_str(), nBins, min, max);
-  
-  if (unit != "") xAxisTitle += " [" + unit +  "]";  
-  myHisto.GetXaxis()->SetTitle(xAxisTitle.c_str());
-
-  float binWidth = (float) (max - min)/nBins;
-  if (unit != "") yAxisTitle += " / " + to_string_with_precision(binWidth, precision) + " " + unit;
-  myHisto.GetYaxis()->SetTitle(yAxisTitle.c_str());
-  
-  return myHisto;
-}
-
-TH1F makeHisto(int nBins, float* min, string xAxisTitle, string unit, int precision, string yAxisTitle = "Geo. Accept.")
-{
-  TH1F myHisto(xAxisTitle.c_str(), xAxisTitle.c_str(), nBins, min);
-
-  if (unit != "") xAxisTitle += " [" + unit +  "]";
-  myHisto.GetXaxis()->SetTitle(xAxisTitle.c_str());
-  myHisto.GetYaxis()->SetTitle(yAxisTitle.c_str());
-
-  return myHisto;
-}
-
-void calcGeomAccept()
-{
-  string fileName = "files/outputHFTrackEff_Lambda2ppi_CR_2_mode_pTref_3p0_extra_high_pT_points.root";
+  string dir = "/sphenix/tg/tg01/hf/cdean/LF_analysis/evaluatorFiles/evaluator_skimmed_files/";
+  string fileName = type == "Kshort2pipi" ? dir + "prompt_Kshort.root"
+                                          : dir + "prompt_Lambda0.root";
   TFile *file = new TFile(fileName.c_str());
-  TTree* data = (TTree*)file->Get("HFTrackEfficiency");
+  TTree* data = (TTree*)file->Get("TruthInfo");
 
-  string fileName2 = "files/outputHFTrackEff_Kshort2pipi_CR_2_mode_pTref_3p0_extra_high_pT_points.root";
-  TFile *file2 = new TFile(fileName2.c_str());
-  TTree* data2 = (TTree*)file2->Get("HFTrackEfficiency");
-
-  float Lambda0_mass; data->SetBranchAddress("true_mother_mass",&Lambda0_mass);
-  float Lambda0_p; data->SetBranchAddress("true_mother_p",&Lambda0_p);
-  float Lambda0_pT; data->SetBranchAddress("true_mother_pT",&Lambda0_pT);
-  float Lambda0_eta; data->SetBranchAddress("true_mother_eta",&Lambda0_eta);
-  float Lambda0_phi; data->SetBranchAddress("true_mother_phi",&Lambda0_phi);
-  int Lambda0_track_1_silicon_seeds; data->SetBranchAddress("reco_track_1_silicon_seeds", &Lambda0_track_1_silicon_seeds);   
-  int Lambda0_track_2_silicon_seeds; data->SetBranchAddress("reco_track_2_silicon_seeds", &Lambda0_track_2_silicon_seeds);   
-
-  float K_S0_mass; data2->SetBranchAddress("true_mother_mass",&K_S0_mass);
-  float K_S0_p; data2->SetBranchAddress("true_mother_p",&K_S0_p);
-  float K_S0_pT; data2->SetBranchAddress("true_mother_pT",&K_S0_pT);
-  float K_S0_eta; data2->SetBranchAddress("true_mother_eta",&K_S0_eta);
-  float K_S0_phi; data2->SetBranchAddress("true_mother_phi",&K_S0_phi);
-  int K_S0_track_1_silicon_seeds; data2->SetBranchAddress("reco_track_1_silicon_seeds", &K_S0_track_1_silicon_seeds);   
-  int K_S0_track_2_silicon_seeds; data2->SetBranchAddress("reco_track_2_silicon_seeds", &K_S0_track_2_silicon_seeds);   
-
-  float lower_bin_bounds[] = {0.5, 0.8, 1.1, 1.4, 1.8, 2.2, 3, 4};
-  const unsigned int n_variable_bins = sizeof(lower_bin_bounds)/sizeof(lower_bin_bounds[0]) - 1; 
-
-  TH1F Lambda0_all_pT = makeHisto(n_variable_bins, lower_bin_bounds, "pT", "GeV", 1);
-  TH1F K_S0_all_pT = makeHisto(n_variable_bins, lower_bin_bounds, "pT", "GeV", 1);
-
-  TH1F Lambda0_in_geometry_pT = makeHisto(n_variable_bins, lower_bin_bounds, "pT", "GeV", 1);
-  TH1F K_S0_in_geometry_pT = makeHisto(n_variable_bins, lower_bin_bounds, "pT", "GeV", 1);
-
-  TH1F final_ratio = makeHisto(n_variable_bins, lower_bin_bounds, "pT", "GeV", 1, "#Lambda^{0}/K_{S}^{0} Geo. Accept.");
-  TH1F inv_final_ratio = makeHisto(n_variable_bins, lower_bin_bounds, "pT", "GeV", 1, "K_{S}^{0}/#Lambda^{0} Geo. Accept.");
-
-  int n_bins = 15;
-  float eta_min_max = 1.1;
-
-  TH1F Lambda0_all_eta = makeHisto(n_bins, -1*eta_min_max, eta_min_max, "#eta", "", 1);
-  TH1F K_S0_all_eta = makeHisto(n_bins, -1*eta_min_max, eta_min_max, "#eta", "", 1);
-
-  TH1F Lambda0_in_geometry_eta = makeHisto(n_bins, -1*eta_min_max, eta_min_max, "#eta", "", 1);
-  TH1F K_S0_in_geometry_eta = makeHisto(n_bins, -1*eta_min_max, eta_min_max, "#eta", "", 1);
-
-  TH1F final_ratio_eta = makeHisto(n_bins, -1*eta_min_max, eta_min_max, "#eta", "", 1, "#Lambda^{0}/K_{S}^{0} Geo. Accept.");
-  TH1F inv_final_ratio_eta = makeHisto(n_bins, -1*eta_min_max, eta_min_max, "#eta", "", 1, "K_{S}^{0}/#Lambda^{0} Geo. Accept.");
-
-  TH1F Lambda0_all_phi = makeHisto(n_bins, -1*M_PI, M_PI, "#phi", "", 1);
-  TH1F K_S0_all_phi = makeHisto(n_bins, -1*M_PI, M_PI, "#phi", "", 1);
-
-  TH1F Lambda0_in_geometry_phi = makeHisto(n_bins, -1*M_PI, M_PI, "#phi", "", 1);
-  TH1F K_S0_in_geometry_phi = makeHisto(n_bins, -1*M_PI, M_PI, "#phi", "", 1);
-
-  TH1F final_ratio_phi = makeHisto(n_bins, -1*M_PI, M_PI, "#phi", "", 1, "#Lambda^{0}/K_{S}^{0} Geo. Accept.");
-  TH1F inv_final_ratio_phi = makeHisto(n_bins, -1*M_PI, M_PI, "#phi", "", 1, "K_{S}^{0}/#Lambda^{0} Geo. Accept.");
+  variableMap inputMap;
+  for (auto &[branch, var] : inputMap.float_vars) data->SetBranchAddress(branch.c_str(), &var);
+  for (auto &[branch, var] : inputMap.int_vars)   data->SetBranchAddress(branch.c_str(), &var);
 
   int tmp = 0;
   int barWidth = 50;
 
-  //Lambda0 Geometric Acceptance
+  //Geometric Acceptance
   int num_entries = data->GetEntries();
   for (int  l = 0; l < num_entries; ++l)
   {
@@ -181,71 +201,51 @@ void calcGeomAccept()
 
     data->GetEntry(l);
 
-    float pz = sqrt(pow(Lambda0_p, 2) - pow(Lambda0_pT, 2));
-    float E = sqrt(pow(Lambda0_p, 2) + pow(Lambda0_mass, 2));
-    float rapidity = 0.5*log((E + pz)/(E - pz));
+    float rapidity = inputMap.float_vars["mother_true_rap"];
 
     if (abs(rapidity) > 1.) continue;
-    
-    Lambda0_all_pT.Fill(Lambda0_pT);
-    Lambda0_all_eta.Fill(Lambda0_eta);
-    Lambda0_all_phi.Fill(Lambda0_phi);
+    if (abs(inputMap.float_vars["mother_true_vz"]) > 10) continue;
+    //if (min(inputMap.float_vars["track_1_true_pT"], inputMap.float_vars["track_2_true_pT"]) < 0.25) continue;
+ 
+    if (type == "Kshort2pipi")
+    {
+      pT.K_S0_all.Fill(inputMap.float_vars["mother_true_pT"]);
+      eta.K_S0_all.Fill(inputMap.float_vars["mother_true_eta"]);
+      rap.K_S0_all.Fill(rapidity);
+      phi.K_S0_all.Fill(inputMap.float_vars["mother_true_phi"]);
+    }
+    else
+    {
+      pT.Lambda0_all.Fill(inputMap.float_vars["mother_true_pT"]);
+      eta.Lambda0_all.Fill(inputMap.float_vars["mother_true_eta"]);
+      rap.Lambda0_all.Fill(rapidity);
+      phi.Lambda0_all.Fill(inputMap.float_vars["mother_true_phi"]);
+    }
 
-    bool accepted = min(Lambda0_track_1_silicon_seeds, Lambda0_track_2_silicon_seeds) > 0;
+    //if (min(inputMap.float_vars["track_1_reco_pT"], inputMap.float_vars["track_2_reco_pT"]) < 0.25) continue;
+    //if (type == "Kshort2pipi" && (0.47 > inputMap.float_vars["mother_reco_mass"] || inputMap.float_vars["mother_reco_mass"] > 0.52)) continue;
+    //if (type == "Lambda02ppi" && (1.108 > inputMap.float_vars["mother_reco_mass"] || inputMap.float_vars["mother_reco_mass"] > 1.12)) continue;
+
+    bool accepted = min(inputMap.int_vars["track_1_reco_nmaps"], inputMap.int_vars["track_2_reco_nmaps"]) > 0 ? true : false;
 
     if (accepted)
     {
-      Lambda0_in_geometry_pT.Fill(Lambda0_pT);
-      Lambda0_in_geometry_eta.Fill(Lambda0_eta);
-      Lambda0_in_geometry_phi.Fill(Lambda0_phi);
-    }
-  }
-
-  tmp = 0; //cout<<"Creating Particles: 0%,"<<flush;
-  barWidth = 50;
-
-  //K_S0 Geometric Acceptance
-  num_entries = data2->GetEntries();
-  for (int  l = 0; l < num_entries; ++l)
-  {
-    if (tmp != (int)100*l/num_entries)
-    {
-      tmp = (int)100*l/num_entries;
-      if ((tmp%1)  == 0)
+      if (type == "Kshort2pipi")
       {
-        cout << "[";
-        int pos = barWidth * tmp/100;
-        for (int i = 0; i < barWidth; ++i)
-        {
-          if (i < pos) cout << "=";
-          else if (i == pos) cout << ">";
-          else cout << " ";
-        }
-        cout << "] " << tmp << " %\r";
-        cout.flush();
+        pT.K_S0_inGeo.Fill(inputMap.float_vars["mother_true_pT"]);
+        eta.K_S0_inGeo.Fill(inputMap.float_vars["mother_true_eta"]);
+        rap.K_S0_inGeo.Fill(rapidity);
+        phi.K_S0_inGeo.Fill(inputMap.float_vars["mother_true_phi"]);
+      }
+      else
+      {
+        pT.Lambda0_inGeo.Fill(inputMap.float_vars["mother_true_pT"]);
+        eta.Lambda0_inGeo.Fill(inputMap.float_vars["mother_true_eta"]);
+        rap.Lambda0_inGeo.Fill(rapidity);
+        phi.Lambda0_inGeo.Fill(inputMap.float_vars["mother_true_phi"]);
       }
     }
 
-    data2->GetEntry(l);
-
-    float pz = sqrt(pow(K_S0_p, 2) - pow(K_S0_pT, 2));
-    float E = sqrt(pow(K_S0_p, 2) + pow(K_S0_mass, 2));
-    float rapidity = 0.5*log((E + pz)/(E - pz));
-
-    if (abs(rapidity) > 1.) continue;
-
-    K_S0_all_pT.Fill(K_S0_pT);
-    K_S0_all_eta.Fill(K_S0_eta);
-    K_S0_all_phi.Fill(K_S0_phi);
-
-    bool accepted = min(K_S0_track_1_silicon_seeds, K_S0_track_2_silicon_seeds) > 0;
-
-    if (accepted)
-    {
-      K_S0_in_geometry_pT.Fill(K_S0_pT);
-      K_S0_in_geometry_eta.Fill(K_S0_eta);
-      K_S0_in_geometry_phi.Fill(K_S0_phi);
-    }
   }
 
   cout << "[";
@@ -259,137 +259,142 @@ void calcGeomAccept()
   cout << "] 100 %\r";
   cout.flush();
   cout<<endl;
+}
 
-  Lambda0_all_pT.Sumw2();
-  K_S0_all_pT.Sumw2();
+void makeRatios(histos &histoSet, string trailer)
+{
+  string K_S0_saveName = "KS0_geometric_acceptance_ratio_" + trailer;
+  string Lambda0_saveName = "Lambda0_geometric_acceptance_ratio_" + trailer;
+  string ratio_saveName = "Lambda0_to_KS0_geometric_acceptance_ratio_" + trailer;
+  string inv_ratio_saveName = "K_S0_to_Lambda0_geometric_acceptance_ratio_" + trailer;
 
-  Lambda0_in_geometry_pT.Sumw2();
-  K_S0_in_geometry_pT.Sumw2();
+  histoSet.Lambda0_all.Sumw2();
+  histoSet.K_S0_all.Sumw2();
 
-  Lambda0_in_geometry_pT.Divide(&Lambda0_all_pT);
-  K_S0_in_geometry_pT.Divide(&K_S0_all_pT);
+  histoSet.Lambda0_inGeo.Sumw2();
+  histoSet.K_S0_inGeo.Sumw2();
 
-  savePlots(K_S0_in_geometry_pT, "KS0_geometric_acceptance_ratio", false, 0, 0.035);
-  savePlots(Lambda0_in_geometry_pT, "Lambda0_geometric_acceptance_ratio", false, 0, 0.035);
+  histoSet.Lambda0_inGeo.Divide(&histoSet.Lambda0_all);
+  histoSet.K_S0_inGeo.Divide(&histoSet.K_S0_all);
 
-  final_ratio = Lambda0_in_geometry_pT; 
-  final_ratio.Divide(&K_S0_in_geometry_pT);
+  histoSet.ratio = histoSet.Lambda0_inGeo;
+  histoSet.inv_ratio = histoSet.K_S0_inGeo;
 
-  inv_final_ratio = K_S0_in_geometry_pT; 
-  inv_final_ratio.Divide(&Lambda0_in_geometry_pT);
+  histoSet.ratio.Divide(&histoSet.K_S0_inGeo);
+  histoSet.inv_ratio.Divide(&histoSet.Lambda0_inGeo);
 
-  savePlots(inv_final_ratio, "K_S0_to_Lambda0_geometric_acceptance_ratio", false, 0, 3);
-  savePlots(final_ratio, "Lambda0_to_KS0_geometric_acceptance_ratio", false, 0, 1);
-
-  Lambda0_all_eta.Sumw2();
-  K_S0_all_eta.Sumw2();
-
-  Lambda0_in_geometry_eta.Sumw2();
-  K_S0_in_geometry_eta.Sumw2();
-
-  Lambda0_in_geometry_eta.Divide(&Lambda0_all_eta);
-  K_S0_in_geometry_eta.Divide(&K_S0_all_eta);
-
-  savePlots(K_S0_in_geometry_eta, "KS0_geometric_acceptance_ratio_eta", false, 0, 0.035);
-  savePlots(Lambda0_in_geometry_eta, "Lambda0_geometric_acceptance_ratio_eta", false, 0, 0.035);
-
-  final_ratio_eta = Lambda0_in_geometry_eta; 
-  final_ratio_eta.Divide(&K_S0_in_geometry_eta);
-
-  inv_final_ratio_eta = K_S0_in_geometry_eta; 
-  inv_final_ratio_eta.Divide(&Lambda0_in_geometry_eta);
-
-  savePlots(inv_final_ratio_eta, "K_S0_to_Lambda0_geometric_acceptance_ratio_eta", false, 0, 3);
-  savePlots(final_ratio_eta, "Lambda0_to_KS0_geometric_acceptance_ratio_eta", false, 0, 1);
-
-  Lambda0_all_phi.Sumw2();
-  K_S0_all_phi.Sumw2();
-
-  Lambda0_in_geometry_phi.Sumw2();
-  K_S0_in_geometry_phi.Sumw2();
-
-  Lambda0_in_geometry_phi.Divide(&Lambda0_all_phi);
-  K_S0_in_geometry_phi.Divide(&K_S0_all_phi);
-
-  savePlots(K_S0_in_geometry_phi, "KS0_geometric_acceptance_ratio_phi", false, 0, 0.035);
-  savePlots(Lambda0_in_geometry_phi, "Lambda0_geometric_acceptance_ratio_phi", false, 0, 0.035);
-
-  final_ratio_phi = Lambda0_in_geometry_phi; 
-  final_ratio_phi.Divide(&K_S0_in_geometry_phi);
-
-  inv_final_ratio_phi = K_S0_in_geometry_phi; 
-  inv_final_ratio_phi.Divide(&Lambda0_in_geometry_phi);
-
-  savePlots(inv_final_ratio_phi, "K_S0_to_Lambda0_geometric_acceptance_ratio_phi", false, 0, 3);
-  savePlots(final_ratio_phi, "Lambda0_to_KS0_geometric_acceptance_ratio_phi", false, 0, 1);
-
-  //Geometric + efficiency ratio
-  //pT
-  std::cout << "| $p_{T}$ [GeV] | $K_S^0$ | $\\Lambda^0$ | $\\Lambda^0 / K_S^0$ | $K_S^0 / \\Lambda^0$ |" << std::endl;
-  std::cout << "|:--:|:--:|:--:|:--:|:--:|" << std::endl;
-  for (int i = 1; i <= n_variable_bins; ++i)
+  if (saveFinalPlots)
   {
-    std::string low_pT = to_string_with_precision(final_ratio.GetXaxis()->GetBinLowEdge(i), 1);
-    std::string high_pT = to_string_with_precision(final_ratio.GetXaxis()->GetBinUpEdge(i), 1);
+    savePlots(histoSet.K_S0_inGeo, K_S0_saveName.c_str(), false, 0, 0.2);
+    savePlots(histoSet.Lambda0_inGeo, Lambda0_saveName.c_str(), false, 0, 0.2);
 
-    std::string Ks0_content = to_string_with_precision(K_S0_in_geometry_pT.GetBinContent(i), 4);
-    std::string Ks0_error = to_string_with_precision(K_S0_in_geometry_pT.GetBinError(i), 4);
+    savePlots(histoSet.ratio, ratio_saveName.c_str(), false, 0, 1);
+    savePlots(histoSet.inv_ratio, inv_ratio_saveName.c_str(), false, 0, 4);
+  }
+}
 
-    std::string Lambda_content = to_string_with_precision(Lambda0_in_geometry_pT.GetBinContent(i), 4);
-    std::string Lambda_error = to_string_with_precision(Lambda0_in_geometry_pT.GetBinError(i), 4);
+void makeTable(string var, histos theseHistos, string type = "Markdown")
+{
+  cout << endl;
+ 
+  string startline = type == "Markdown" ? "| " : "";
+  string separator = type == "Markdown" ? " | " : " & ";
+  string endline  = type == "Markdown" ? " | " : " \\\\ ";
 
-    std::string content = to_string_with_precision(final_ratio.GetBinContent(i), 4);
-    std::string error = to_string_with_precision(final_ratio.GetBinError(i), 4);
+  int nBins = theseHistos.variable_bins ? n_variable_bins : theseHistos.nBins;
 
-    std::string inv_content = to_string_with_precision(inv_final_ratio.GetBinContent(i), 4);
-    std::string inv_error = to_string_with_precision(inv_final_ratio.GetBinError(i), 4);
-    std::cout << "| " << low_pT << " $\\rightarrow$ " << high_pT << " | " << Ks0_content << " $\\pm$ " << Ks0_error << " | " << Lambda_content << " $\\pm$ " << Lambda_error << " | " << content << " $\\pm$ " << error << " | " << inv_content << " $\\pm$ " << inv_error << " |" << std::endl;
-  } 
+  if (type != "Markdown") cout << "\\begin{tabular}{@{}ccccc@{}}" << endl << "\\toprule[1pt]" << endl;
+  
+  cout << startline << var << separator << "$K_S^0$" << separator << "$\\Lambda^0$" << separator << "$\\Lambda^0 / K_S^0$" << separator << "$K_S^0 / \\Lambda^0$" << endline << endl;
 
-  //eta
-  std::cout << "| $\\eta$ | $K_S^0$ | $\\Lambda^0$ | $\\Lambda^0 / K_S^0$ | $K_S^0 / \\Lambda^0$ |" << std::endl;
-  std::cout << "|:--:|:--:|:--:|:--:|:--:|" << std::endl;
-  for (int i = 1; i <= n_bins; ++i)
+  if (type == "Markdown") cout << "|:--:|:--:|:--:|:--:|:--:|" << endl;
+  else cout << "\\midrule[0.2pt]" << endl;
+
+  for (int i = 1; i <= nBins; ++i)
   {
-    std::string low = to_string_with_precision(final_ratio_eta.GetXaxis()->GetBinLowEdge(i), 2);
-    std::string high = to_string_with_precision(final_ratio_eta.GetXaxis()->GetBinUpEdge(i), 2);
+    string low = to_string_with_precision(theseHistos.ratio.GetXaxis()->GetBinLowEdge(i), 2);
+    string high = to_string_with_precision(theseHistos.ratio.GetXaxis()->GetBinUpEdge(i), 2);
 
-    std::string Ks0_content = to_string_with_precision(K_S0_in_geometry_eta.GetBinContent(i), 4);
-    std::string Ks0_error = to_string_with_precision(K_S0_in_geometry_eta.GetBinError(i), 4);
+    string Ks0_content = to_string_with_precision(theseHistos.K_S0_inGeo.GetBinContent(i), 4);
+    string Ks0_error = to_string_with_precision(theseHistos.K_S0_inGeo.GetBinError(i), 4);
 
-    std::string Lambda_content = to_string_with_precision(Lambda0_in_geometry_eta.GetBinContent(i), 4);
-    std::string Lambda_error = to_string_with_precision(Lambda0_in_geometry_eta.GetBinError(i), 4);
+    string Lambda_content = to_string_with_precision(theseHistos.Lambda0_inGeo.GetBinContent(i), 4);
+    string Lambda_error = to_string_with_precision(theseHistos.Lambda0_inGeo.GetBinError(i), 4);
 
-    std::string content = to_string_with_precision(final_ratio_eta.GetBinContent(i), 2);
-    std::string error = to_string_with_precision(final_ratio_eta.GetBinError(i), 2);
+    string content = to_string_with_precision(theseHistos.ratio.GetBinContent(i), 2);
+    string error = to_string_with_precision(theseHistos.ratio.GetBinError(i), 2);
 
-    std::string inv_content = to_string_with_precision(inv_final_ratio_eta.GetBinContent(i), 2);
-    std::string inv_error = to_string_with_precision(inv_final_ratio_eta.GetBinError(i), 2);
-    std::cout << "| " << low << " $\\rightarrow$ " << high << " | " << Ks0_content << " $\\pm$ " << Ks0_error << " | " << Lambda_content << " $\\pm$ " << Lambda_error << " | " << content << " $\\pm$ " << error << " | " << inv_content << " $\\pm$ " << inv_error << " |" << std::endl;
-  } 
+    string inv_content = to_string_with_precision(theseHistos.inv_ratio.GetBinContent(i), 2);
+    string inv_error = to_string_with_precision(theseHistos.inv_ratio.GetBinError(i), 2);
+    cout << startline << low << " $\\rightarrow$ " << high << separator << Ks0_content << " $\\pm$ " << Ks0_error << separator << Lambda_content << " $\\pm$ " << Lambda_error << separator << content << " $\\pm$ " << error << separator << inv_content << " $\\pm$ " << inv_error << endline << endl;
+  }
 
-  //phi
-  std::cout << "| $\\phi$ | $K_S^0$ | $\\Lambda^0$ | $\\Lambda^0 / K_S^0$ | $K_S^0 / \\Lambda^0$ |" << std::endl;
-  std::cout << "|:--:|:--:|:--:|:--:|:--:|" << std::endl;
-  for (int i = 1; i <= n_bins; ++i)
+  if (type != "Markdown") cout << "\\bottomrule[1pt]" << endl << "\\end{tabular}" << endl;
+}
+
+void makeArray(string type, histos theseHistos)
+{
+  cout << "Printing arrays for type " << type << endl;
+  int nBins = theseHistos.variable_bins ? n_variable_bins : theseHistos.nBins;
+  float xVal[nBins], xErr[nBins], yVal[nBins], yErr[nBins];
+
+  for (int i = 0; i <= nBins; ++i)
   {
-    std::string low = to_string_with_precision(final_ratio_phi.GetXaxis()->GetBinLowEdge(i), 2);
-    std::string high = to_string_with_precision(final_ratio_phi.GetXaxis()->GetBinUpEdge(i), 2);
+    xVal[i] = theseHistos.inv_ratio.GetXaxis()->GetBinCenter(i+1);
+    xErr[i] = xVal[i] - theseHistos.inv_ratio.GetXaxis()->GetBinLowEdge(i+1);
+    yVal[i] = theseHistos.inv_ratio.GetBinContent(i+1);
+    yErr[i] = theseHistos.inv_ratio.GetBinError(i+1);
+  }
 
-    std::string Ks0_content = to_string_with_precision(K_S0_in_geometry_phi.GetBinContent(i), 4);
-    std::string Ks0_error = to_string_with_precision(K_S0_in_geometry_phi.GetBinError(i), 4);
+  cout << "  float x[] = {";
+  for (auto &val : xVal) cout << to_string_with_precision(val, 3) << ", ";
+  cout << "};" << endl;
 
-    std::string Lambda_content = to_string_with_precision(Lambda0_in_geometry_phi.GetBinContent(i), 4);
-    std::string Lambda_error = to_string_with_precision(Lambda0_in_geometry_phi.GetBinError(i), 4);
+  cout << "  float ex[] = {";
+  for (auto &val : xErr) cout << to_string_with_precision(val, 3) << ", ";
+  cout << "};" << endl;
 
-    std::string content = to_string_with_precision(final_ratio_phi.GetBinContent(i), 2);
-    std::string error = to_string_with_precision(final_ratio_phi.GetBinError(i), 2);
+  cout << "  float y[] = {";
+  for (auto &val : yVal) cout << to_string_with_precision(val, 3) << ", ";
+  cout << "};" << endl;
 
-    std::string inv_content = to_string_with_precision(inv_final_ratio_phi.GetBinContent(i), 2);
-    std::string inv_error = to_string_with_precision(inv_final_ratio_phi.GetBinError(i), 2);
-    std::cout << "| " << low << " $\\rightarrow$ " << high << " | " << Ks0_content << " $\\pm$ " << Ks0_error << " | " << Lambda_content << " $\\pm$ " << Lambda_error << " | " << content << " $\\pm$ " << error << " | " << inv_content << " $\\pm$ " << inv_error << " |" << std::endl;
-  } 
+  cout << "  float ey[] = {";
+  for (auto &val : yErr) cout << to_string_with_precision(val, 3) << ", ";
+  cout << "};" << endl;
 
-  file->Close();
-  file2->Close();
+  cout << "const int n = sizeof(x)/sizeof(x[0]);" << endl;
+}
+
+void calcGeomAccept()
+{
+  cout << "Processing K-short data" << endl;
+  processData();
+  cout << "Processing Lambda0 data" << endl;
+  processData("Lambda02ppi");
+
+  makeRatios(pT, "pT");
+  makeRatios(eta, "eta");
+  makeRatios(phi, "phi");
+  makeRatios(rap, "rap");
+
+  if (printMarkdownTables)
+  {
+    makeTable("$p_{T}$ [GeV]", pT, "Markdown");
+    makeTable("$\\eta$", eta, "Markdown");
+    makeTable("$y$", rap, "Markdown");
+    makeTable("$\\phi$", phi, "Markdown");
+  }
+
+  if (printLatexTables)
+  {
+    makeTable("$p_{T}$ [GeV]", pT, "LaTex");
+    makeTable("$\\eta$", eta, "LaTex");
+    makeTable("$y$", rap, "LaTex");
+    makeTable("$\\phi$", phi, "LaTex");
+  }
+
+  if (printArrays)
+  {
+    makeArray("pT", pT);
+  }
 }
