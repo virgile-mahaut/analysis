@@ -21,7 +21,7 @@
 R__LOAD_LIBRARY(libfun4all.so)
 
 #include <triggerbitselection/DstPhotonMBDSelection.h>
-R__LOAD_LIBRARY(libtriggerbitselection.so.so)
+R__LOAD_LIBRARY(libtriggerbitselection.so)
 
 void Fun4All_DstPhotonMBDSelection(int nevents = 1, const std::string &dst_triggered_name = "DST_CALOFITTING.root")
 {
