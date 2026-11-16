@@ -45,6 +45,7 @@ libanneutral_la_LIBADD = \
   -lfun4all \
   -lg4dst \
   -ltriggeremulator \
+  -lpileupfilter \
   -luspin
 
 # Rule for generating table CINT dictionaries.

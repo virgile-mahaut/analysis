@@ -179,24 +179,6 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
         iP = ival / 2 / (nRegions + 1);            // particle index
         iR = (ival / 2 % (nRegions + 1) + 1) % 2;  // region index
       }
-
-      // Store QA
-      if (iR == 0 && iP != -1) {
-        h_pair_meson_zvtx[iP]->Fill(diphoton_vertex_z);
-        h_pair_meson_pt_eta[iP][iPt]->Fill(diphoton_eta);
-        h_pair_meson_pt_xf[iP][iPt]->Fill(diphoton_xf);
-        h_pair_meson_eta_pt[iP][ietaBin]->Fill(diphoton_pt);
-        h_pair_meson_eta_xf[iP][ietaBin]->Fill(diphoton_xf);
-        h_pair_meson_xf_pt[iP][ixfBin]->Fill(diphoton_pt);
-        h_pair_meson_xf_eta[iP][ixfBin]->Fill(diphoton_eta);
-
-        h_pair_meson_2D_xf_pt[iP]->Fill(diphoton_xf, diphoton_pt);
-        h_pair_meson_2D_xf_eta[iP]->Fill(diphoton_xf, diphoton_eta);
-        h_pair_meson_2D_xf_zvtx[iP]->Fill(diphoton_xf, diphoton_vertex_z);
-        h_pair_meson_2D_pt_eta[iP]->Fill(diphoton_pt, diphoton_eta);
-        h_pair_meson_2D_pt_zvtx[iP]->Fill(diphoton_pt, diphoton_vertex_z);
-        h_pair_meson_2D_eta_zvtx[iP]->Fill(diphoton_eta, diphoton_vertex_z);
-      }
       
       // Compute yield
       float phi_beam = 0;
@@ -216,6 +198,29 @@ int AnNeutralMeson_nano::process_event(PHCompositeNode *)
         if (require_low_xf_cut) {
           if (ixfBinRelative >= 6) continue; // i.e. last most forward pT bins 6 and 7 -> xF > 0.035
         }
+
+        // Store QA
+        if (iR == 0 && iP != -1) {
+          float diphoton_eta_relative = diphoton_eta * beamDirection[iB];
+          float diphoton_xf_relative = diphoton_xf * beamDirection[iB];
+          float diphoton_vertex_z_relative = diphoton_vertex_z * beamDirection[iB];
+          
+          h_pair_meson_zvtx[iP]->Fill(diphoton_vertex_z_relative);
+          h_pair_meson_pt_eta[iP][iPt]->Fill(diphoton_eta_relative);
+          h_pair_meson_pt_xf[iP][iPt]->Fill(diphoton_xf_relative);
+          h_pair_meson_eta_pt[iP][ietaBinRelative]->Fill(diphoton_pt);
+          h_pair_meson_eta_xf[iP][ietaBinRelative]->Fill(diphoton_xf_relative);
+          h_pair_meson_xf_pt[iP][ixfBinRelative]->Fill(diphoton_pt);
+          h_pair_meson_xf_eta[iP][ixfBinRelative]->Fill(diphoton_eta_relative);
+
+          h_pair_meson_2D_xf_pt[iP]->Fill(diphoton_xf_relative, diphoton_pt);
+          h_pair_meson_2D_xf_eta[iP]->Fill(diphoton_xf_relative, diphoton_eta_relative);
+          h_pair_meson_2D_xf_zvtx[iP]->Fill(diphoton_xf_relative, diphoton_vertex_z_relative);
+          h_pair_meson_2D_pt_eta[iP]->Fill(diphoton_pt, diphoton_eta_relative);
+          h_pair_meson_2D_pt_zvtx[iP]->Fill(diphoton_pt, diphoton_vertex_z_relative);
+          h_pair_meson_2D_eta_zvtx[iP]->Fill(diphoton_eta_relative, diphoton_vertex_z_relative);
+        }
+
 
         // Store symmetrized invariant mass distributions
         // Only eta and xF distributions are symmetrized!
