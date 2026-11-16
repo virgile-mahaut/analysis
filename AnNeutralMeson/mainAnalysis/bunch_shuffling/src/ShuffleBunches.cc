@@ -34,7 +34,7 @@ namespace AsymmetryCalc {
     nIterations = iterMax - iterMin + 1;
     std::ifstream infile_fill_run(inputfilename_fill_run);
     if (!infile_fill_run) {
-      std::cerr << "Could not open file " << inputfilename_fill_run << std::endl;
+      std::cerr << "Could not open file [" << inputfilename_fill_run << "]" << std::endl;
       std::exit(1);
     }
 
@@ -937,10 +937,47 @@ namespace AsymmetryCalc {
   void ShuffleBunches::read_binary_array(const std::string& inputfilename)
   {
     std::ifstream inbinary(inputfilename, std::ios::binary);
+
+    if (!inbinary.is_open()) {
+      std::cerr << "Error: Cannot open input file " << inputfilename << std::endl;
+      exit(1);
+    }
+    
     //std::cout << "size of pt array = " << sizeof(array_yield_pt_bunches) << std::endl;
     inbinary.read(reinterpret_cast<char*>(array_yield_pt_bunches), sizeof(array_yield_pt_bunches));
     inbinary.read(reinterpret_cast<char*>(array_yield_eta_bunches), sizeof(array_yield_eta_bunches));
     inbinary.read(reinterpret_cast<char*>(array_yield_xf_bunches), sizeof(array_yield_xf_bunches));
+    
+    uint64_t sum_yield_pt = 0;
+    uint64_t sum_yield_eta = 0;
+    uint64_t sum_yield_xf = 0;
+    for (int iS = 0; iS < 2; iS++) {
+      for (int iBunch = 0; iBunch < ASYM_CONSTANTS::nBunches; ++iBunch) {
+        for (int iB = 0; iB < ASYM_CONSTANTS::nBeams; ++iB) {
+          for (int iP = 0; iP < ASYM_CONSTANTS::nParticles; ++iP) {
+            for (int iR = 0; iR < ASYM_CONSTANTS::nRegions; ++iR) {
+              for (int iPhi = 0; iPhi < ASYM_CONSTANTS::nPhiBins; ++iPhi) {
+                for (int iPt = 0; iPt < ASYM_CONSTANTS::nPtBins; ++iPt) {
+                  for (int iDir = 0; iDir < ASYM_CONSTANTS::nDirections; ++iDir) {
+                    sum_yield_pt += array_yield_pt_bunches[iB][iP][iR][iPt][iDir][iS][iPhi][iBunch];
+                  }
+                }
+                for (int iEta = 0; iEta < ASYM_CONSTANTS::nEtaBins; ++iEta) {
+                  sum_yield_eta += array_yield_eta_bunches[iB][iP][iR][iEta][iS][iPhi][iBunch];
+                }
+                for (int iXf = 0; iXf < ASYM_CONSTANTS::nXfBins; ++iXf) {
+                  sum_yield_xf += array_yield_xf_bunches[iB][iP][iR][iXf][iS][iPhi][iBunch];
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // std::cout << "input file = " << inputfilename << std::endl;
+    // std::cout << "yields = (" << sum_yield_pt << "," << sum_yield_eta << "," << sum_yield_xf << ")" << std::endl;
+    
   }
   
   void ShuffleBunches::shuffle_bunch_indices(const int seednumber)
@@ -1006,18 +1043,27 @@ namespace AsymmetryCalc {
               for (int iPt = 0; iPt < ASYM_CONSTANTS::nPtBins; ++iPt) {
                 for (int iDir = 0; iDir < ASYM_CONSTANTS::nDirections; ++iDir) {
                   arr_yield_pt(iB, iP, iR, iPt, iDir, iS_shuffle, iPhi) +=
-                      array_yield_pt_bunches[iB][iP][iR][iPt][iDir][iS_true][iPhi][iBunch];
+                    array_yield_pt_bunches[iB][iP][iR][iPt][iDir][iS_true][iPhi][iBunch];
+                  // std::cout << "array_yield_pt_bunches[" << iB << "][" << iP << "][" << iR << "][" << iPt << "][" << iDir << "][" << iS_true << "][" << iPhi << "][" << iBunch << "] = "
+                  //           << array_yield_pt_bunches[iB][iP][iR][iPt][iDir][iS_true][iPhi][iBunch]
+                  //           << std::endl;
                 }
               }
 
               for (int iEta = 0; iEta < ASYM_CONSTANTS::nEtaBins; ++iEta) {
                 arr_yield_eta(iB, iP, iR, iEta, iS_shuffle, iPhi) +=
-                    array_yield_eta_bunches[iB][iP][iR][iEta][iS_true][iPhi][iBunch];
+                  array_yield_eta_bunches[iB][iP][iR][iEta][iS_true][iPhi][iBunch];
+                // std::cout << "array_yield_eta_bunches[" << iB << "][" << iP << "][" << iR << "][" << iEta << "][" << iS_true << "][" << iPhi << "][" << iBunch << "] = "
+                //           << array_yield_eta_bunches[iB][iP][iR][iEta][iS_true][iPhi][iBunch]
+                //           << std::endl;
               }
 
               for (int iXf = 0; iXf < ASYM_CONSTANTS::nXfBins; ++iXf) {
                 arr_yield_xf(iB, iP, iR, iXf, iS_shuffle, iPhi) +=
-                    array_yield_xf_bunches[iB][iP][iR][iXf][iS_true][iPhi][iBunch];
+                  array_yield_xf_bunches[iB][iP][iR][iXf][iS_true][iPhi][iBunch];
+                // std::cout << "array_yield_xf_bunches[" << iB << "][" << iP << "][" << iR << "][" << iXf << "][" << iS_true << "][" << iPhi << "][" << iBunch << "] = "
+                //           << array_yield_xf_bunches[iB][iP][iR][iXf][iS_true][iPhi][iBunch]
+                //           << std::endl;
               }
             }
           }
@@ -1077,13 +1123,17 @@ namespace AsymmetryCalc {
               for (int iS = 0; iS < ASYM_CONSTANTS::nSpins; iS++) {
                 for (int iPhi = 0; iPhi < ASYM_CONSTANTS::nPhiBins; iPhi++) {
                   array_yield[iS][iPhi] = arr_pt_yield(iB, iP, iR, iPt, iDir, iS, iPhi);
+                  // std::cout << "arr_pt_yield(" << iB << ", " << iP << ", " << iR << ", " << iPt << ", " << iDir << ", " << iS << ", " << iPhi << ") = "
+                  //           << arr_pt_yield(iB, iP, iR, iPt, iDir, iS, iPhi)
+                  //           << std::endl;
                 }
               }
               compute_sqrt_asym(array_yield, polarization[iB], array_asym, array_asym_err);
               for (int iPhi = 0; iPhi < ASYM_CONSTANTS::nPhiBins; iPhi++) {
                 arr_pt_asym(iB, iP, iR, iPt, iDir, iPhi) = array_asym[iPhi];
                 arr_pt_asym_err(iB, iP, iR, iPt, iDir, iPhi) = array_asym_err[iPhi];
-                
+                // std::cout << "arr_pt_asym(" << iB << ", " << iP << ", " << iR << ", " << iPt << ", " << iDir << ", " << iPhi << ") = " 
+                //           << arr_pt_asym(iB, iP, iR, iPt, iDir, iPhi) << std::endl;
               }
             }
           }

@@ -11,7 +11,7 @@ namespace ASYM_CONSTANTS {
   const std::string particle[nParticles] = {"pi0", "eta"};
   static constexpr size_t nRegions = 2; // peak band or side_band invariant mass region
   const std::string regions[nRegions] = {"peak", "side"};
-  static constexpr size_t nPtBins = 9;
+  static constexpr size_t nPtBins = 8; // 9 default
   static constexpr size_t nEtaBins = 8;
   static constexpr size_t nXfBins = 8;
   static constexpr size_t nDirections = 2;

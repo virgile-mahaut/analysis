@@ -697,6 +697,7 @@ int main(int argc, char *argv[])
   std::string path_to_csv_mean = config["path_to_csv_mean"];
   std::string path_to_csv_ratios = config["path_to_csv_ratios"];
   std::string suffix = config["suffix"]; // This parameter is allowed to be empty
+  std::string production_date = config["production_date"]; // This parameter is allowed to be empty
   std::string stored_iter_asym_histos = config["stored_iter_asym_histos"];
   std::string stored_final_asym_histos = config["stored_final_asym_histos"]; 
   
@@ -731,6 +732,13 @@ int main(int argc, char *argv[])
   if (path_to_csv_ratios.empty())
   {
     path_to_csv_ratios = "/sphenix/u/virgilemahaut/work/analysis/AnNeutralMeson/macros/comparison_micro_DST_analysis/nano_analysis/csv_ratios";
+    std::cout << "default path_to_csv_ratios = " << path_to_csv_ratios << std::endl;
+  }
+  else {
+    std::cout << "custom path_to_csv_ratios = " << path_to_csv_ratios << std::endl;
+  }
+  if (production_date.empty()) {
+    production_date = "06052026";
   }
 
   if (!stored_iter_asym_histos.empty()) {
@@ -741,57 +749,57 @@ int main(int argc, char *argv[])
   }
 
   // All pT/eta/xF means and ratios
-  std::string input_csv_mbd_0mrad_pt_pi0_name = path_to_csv_mean + "/input_pt_mean_01312026" + suffix + "_MBD_pt_l3_0mrad.csv";
-  std::string input_csv_mbd_0mrad_pt_eta_name = path_to_csv_mean + "/input_pt_mean_01312026" + suffix + "_MBD_pt_l4_0mrad.csv";
-  std::string input_csv_mbd_0mrad_eta_pi0_name = path_to_csv_mean + "/input_eta_mean_01312026" + suffix + "_MBD_pt_l3_0mrad.csv";
-  std::string input_csv_mbd_0mrad_eta_eta_name = path_to_csv_mean + "/input_eta_mean_01312026" + suffix + "_MBD_pt_l4_0mrad.csv";
-  std::string input_csv_mbd_0mrad_xf_pi0_name = path_to_csv_mean + "/input_xf_mean_01312026" + suffix + "_MBD_pt_l3_0mrad.csv";
-  std::string input_csv_mbd_0mrad_xf_eta_name = path_to_csv_mean + "/input_xf_mean_01312026" + suffix + "_MBD_pt_l4_0mrad.csv";
-  std::string input_csv_mbd_0mrad_pt_ratios_pi0_name = path_to_csv_ratios + "/pt_ratios_01312026" + suffix + "_MBD_pt_l3_0mrad.csv";
-  std::string input_csv_mbd_0mrad_pt_ratios_eta_name = path_to_csv_ratios + "/pt_ratios_01312026" + suffix + "_MBD_pt_l4_0mrad.csv";
-  std::string input_csv_mbd_0mrad_eta_ratios_pi0_name = path_to_csv_ratios + "/eta_ratios_01312026" + suffix + "_MBD_pt_l3_0mrad.csv";
-  std::string input_csv_mbd_0mrad_eta_ratios_eta_name = path_to_csv_ratios + "/eta_ratios_01312026" + suffix + "_MBD_pt_l4_0mrad.csv";
-  std::string input_csv_mbd_0mrad_xf_ratios_pi0_name = path_to_csv_ratios + "/xf_ratios_01312026" + suffix + "_MBD_pt_l3_0mrad.csv";
-  std::string input_csv_mbd_0mrad_xf_ratios_eta_name = path_to_csv_ratios + "/xf_ratios_01312026" + suffix + "_MBD_pt_l4_0mrad.csv";
+  std::string input_csv_mbd_0mrad_pt_pi0_name = path_to_csv_mean + "/input_pt_mean_" + production_date + suffix + "_MBD_pt_l3_0mrad.csv";
+  std::string input_csv_mbd_0mrad_pt_eta_name = path_to_csv_mean + "/input_pt_mean_" + production_date + suffix + "_MBD_pt_l4_0mrad.csv";
+  std::string input_csv_mbd_0mrad_eta_pi0_name = path_to_csv_mean + "/input_eta_mean_" + production_date + suffix + "_MBD_pt_l3_0mrad.csv";
+  std::string input_csv_mbd_0mrad_eta_eta_name = path_to_csv_mean + "/input_eta_mean_" + production_date + suffix + "_MBD_pt_l4_0mrad.csv";
+  std::string input_csv_mbd_0mrad_xf_pi0_name = path_to_csv_mean + "/input_xf_mean_" + production_date + suffix + "_MBD_pt_l3_0mrad.csv";
+  std::string input_csv_mbd_0mrad_xf_eta_name = path_to_csv_mean + "/input_xf_mean_" + production_date + suffix + "_MBD_pt_l4_0mrad.csv";
+  std::string input_csv_mbd_0mrad_pt_ratios_pi0_name = path_to_csv_ratios + "/pt_ratios_" + production_date + suffix + "_MBD_pt_l3_0mrad.csv";
+  std::string input_csv_mbd_0mrad_pt_ratios_eta_name = path_to_csv_ratios + "/pt_ratios_" + production_date + suffix + "_MBD_pt_l4_0mrad.csv";
+  std::string input_csv_mbd_0mrad_eta_ratios_pi0_name = path_to_csv_ratios + "/eta_ratios_" + production_date + suffix + "_MBD_pt_l3_0mrad.csv";
+  std::string input_csv_mbd_0mrad_eta_ratios_eta_name = path_to_csv_ratios + "/eta_ratios_" + production_date + suffix + "_MBD_pt_l4_0mrad.csv";
+  std::string input_csv_mbd_0mrad_xf_ratios_pi0_name = path_to_csv_ratios + "/xf_ratios_" + production_date + suffix + "_MBD_pt_l3_0mrad.csv";
+  std::string input_csv_mbd_0mrad_xf_ratios_eta_name = path_to_csv_ratios + "/xf_ratios_" + production_date + suffix + "_MBD_pt_l4_0mrad.csv";
 
-  std::string input_csv_photon_0mrad_pt_pi0_name = path_to_csv_mean + "/input_pt_mean_01312026" + suffix + "_efficiency_30_pt_g3_0mrad.csv";
-  std::string input_csv_photon_0mrad_pt_eta_name = path_to_csv_mean + "/input_pt_mean_01312026" + suffix + "_efficiency_30_pt_g4_0mrad.csv";
-  std::string input_csv_photon_0mrad_eta_pi0_name = path_to_csv_mean + "/input_eta_mean_01312026" + suffix + "_efficiency_30_pt_g3_0mrad.csv";
-  std::string input_csv_photon_0mrad_eta_eta_name = path_to_csv_mean + "/input_eta_mean_01312026" + suffix + "_efficiency_30_pt_g4_0mrad.csv";
-  std::string input_csv_photon_0mrad_xf_pi0_name = path_to_csv_mean + "/input_xf_mean_01312026" + suffix + "_efficiency_30_pt_g3_0mrad.csv";
-  std::string input_csv_photon_0mrad_xf_eta_name = path_to_csv_mean + "/input_xf_mean_01312026" + suffix + "_efficiency_30_pt_g4_0mrad.csv";
-  std::string input_csv_photon_0mrad_pt_ratios_pi0_name = path_to_csv_ratios + "/pt_ratios_01312026" + suffix + "_efficiency_30_pt_g3_0mrad.csv";
-  std::string input_csv_photon_0mrad_pt_ratios_eta_name = path_to_csv_ratios + "/pt_ratios_01312026" + suffix + "_efficiency_30_pt_g4_0mrad.csv";
-  std::string input_csv_photon_0mrad_eta_ratios_pi0_name = path_to_csv_ratios + "/eta_ratios_01312026" + suffix + "_efficiency_30_pt_g3_0mrad.csv";
-  std::string input_csv_photon_0mrad_eta_ratios_eta_name = path_to_csv_ratios + "/eta_ratios_01312026" + suffix + "_efficiency_30_pt_g4_0mrad.csv";
-  std::string input_csv_photon_0mrad_xf_ratios_pi0_name = path_to_csv_ratios + "/xf_ratios_01312026" + suffix + "_efficiency_30_pt_g3_0mrad.csv";
-  std::string input_csv_photon_0mrad_xf_ratios_eta_name = path_to_csv_ratios + "/xf_ratios_01312026" + suffix + "_efficiency_30_pt_g4_0mrad.csv";
+  std::string input_csv_photon_0mrad_pt_pi0_name = path_to_csv_mean + "/input_pt_mean_" + production_date + suffix + "_efficiency_30_pt_g3_0mrad.csv";
+  std::string input_csv_photon_0mrad_pt_eta_name = path_to_csv_mean + "/input_pt_mean_" + production_date + suffix + "_efficiency_30_pt_g4_0mrad.csv";
+  std::string input_csv_photon_0mrad_eta_pi0_name = path_to_csv_mean + "/input_eta_mean_" + production_date + suffix + "_efficiency_30_pt_g3_0mrad.csv";
+  std::string input_csv_photon_0mrad_eta_eta_name = path_to_csv_mean + "/input_eta_mean_" + production_date + suffix + "_efficiency_30_pt_g4_0mrad.csv";
+  std::string input_csv_photon_0mrad_xf_pi0_name = path_to_csv_mean + "/input_xf_mean_" + production_date + suffix + "_efficiency_30_pt_g3_0mrad.csv";
+  std::string input_csv_photon_0mrad_xf_eta_name = path_to_csv_mean + "/input_xf_mean_" + production_date + suffix + "_efficiency_30_pt_g4_0mrad.csv";
+  std::string input_csv_photon_0mrad_pt_ratios_pi0_name = path_to_csv_ratios + "/pt_ratios_" + production_date + suffix + "_efficiency_30_pt_g3_0mrad.csv";
+  std::string input_csv_photon_0mrad_pt_ratios_eta_name = path_to_csv_ratios + "/pt_ratios_" + production_date + suffix + "_efficiency_30_pt_g4_0mrad.csv";
+  std::string input_csv_photon_0mrad_eta_ratios_pi0_name = path_to_csv_ratios + "/eta_ratios_" + production_date + suffix + "_efficiency_30_pt_g3_0mrad.csv";
+  std::string input_csv_photon_0mrad_eta_ratios_eta_name = path_to_csv_ratios + "/eta_ratios_" + production_date + suffix + "_efficiency_30_pt_g4_0mrad.csv";
+  std::string input_csv_photon_0mrad_xf_ratios_pi0_name = path_to_csv_ratios + "/xf_ratios_" + production_date + suffix + "_efficiency_30_pt_g3_0mrad.csv";
+  std::string input_csv_photon_0mrad_xf_ratios_eta_name = path_to_csv_ratios + "/xf_ratios_" + production_date + suffix + "_efficiency_30_pt_g4_0mrad.csv";
 
-  std::string input_csv_mbd_15mrad_pt_pi0_name = path_to_csv_mean + "/input_pt_mean_01312026" + suffix + "_MBD_pt_l3_15mrad.csv";
-  std::string input_csv_mbd_15mrad_pt_eta_name = path_to_csv_mean + "/input_pt_mean_01312026" + suffix + "_MBD_pt_l4_15mrad.csv";
-  std::string input_csv_mbd_15mrad_eta_pi0_name = path_to_csv_mean + "/input_eta_mean_01312026" + suffix + "_MBD_pt_l3_15mrad.csv";
-  std::string input_csv_mbd_15mrad_eta_eta_name = path_to_csv_mean + "/input_eta_mean_01312026" + suffix + "_MBD_pt_l4_15mrad.csv";
-  std::string input_csv_mbd_15mrad_xf_pi0_name = path_to_csv_mean + "/input_xf_mean_01312026" + suffix + "_MBD_pt_l3_15mrad.csv";
-  std::string input_csv_mbd_15mrad_xf_eta_name = path_to_csv_mean + "/input_xf_mean_01312026" + suffix + "_MBD_pt_l4_15mrad.csv";
-  std::string input_csv_mbd_15mrad_pt_ratios_pi0_name = path_to_csv_ratios + "/pt_ratios_01312026" + suffix + "_MBD_pt_l3_15mrad.csv";
-  std::string input_csv_mbd_15mrad_pt_ratios_eta_name = path_to_csv_ratios + "/pt_ratios_01312026" + suffix + "_MBD_pt_l4_15mrad.csv";
-  std::string input_csv_mbd_15mrad_eta_ratios_pi0_name = path_to_csv_ratios + "/eta_ratios_01312026" + suffix + "_MBD_pt_l3_15mrad.csv";
-  std::string input_csv_mbd_15mrad_eta_ratios_eta_name = path_to_csv_ratios + "/eta_ratios_01312026" + suffix + "_MBD_pt_l4_15mrad.csv";
-  std::string input_csv_mbd_15mrad_xf_ratios_pi0_name = path_to_csv_ratios + "/xf_ratios_01312026" + suffix + "_MBD_pt_l3_15mrad.csv";
-  std::string input_csv_mbd_15mrad_xf_ratios_eta_name = path_to_csv_ratios + "/xf_ratios_01312026" + suffix + "_MBD_pt_l4_15mrad.csv";
+  std::string input_csv_mbd_15mrad_pt_pi0_name = path_to_csv_mean + "/input_pt_mean_" + production_date + suffix + "_MBD_pt_l3_15mrad.csv";
+  std::string input_csv_mbd_15mrad_pt_eta_name = path_to_csv_mean + "/input_pt_mean_" + production_date + suffix + "_MBD_pt_l4_15mrad.csv";
+  std::string input_csv_mbd_15mrad_eta_pi0_name = path_to_csv_mean + "/input_eta_mean_" + production_date + suffix + "_MBD_pt_l3_15mrad.csv";
+  std::string input_csv_mbd_15mrad_eta_eta_name = path_to_csv_mean + "/input_eta_mean_" + production_date + suffix + "_MBD_pt_l4_15mrad.csv";
+  std::string input_csv_mbd_15mrad_xf_pi0_name = path_to_csv_mean + "/input_xf_mean_" + production_date + suffix + "_MBD_pt_l3_15mrad.csv";
+  std::string input_csv_mbd_15mrad_xf_eta_name = path_to_csv_mean + "/input_xf_mean_" + production_date + suffix + "_MBD_pt_l4_15mrad.csv";
+  std::string input_csv_mbd_15mrad_pt_ratios_pi0_name = path_to_csv_ratios + "/pt_ratios_" + production_date + suffix + "_MBD_pt_l3_15mrad.csv";
+  std::string input_csv_mbd_15mrad_pt_ratios_eta_name = path_to_csv_ratios + "/pt_ratios_" + production_date + suffix + "_MBD_pt_l4_15mrad.csv";
+  std::string input_csv_mbd_15mrad_eta_ratios_pi0_name = path_to_csv_ratios + "/eta_ratios_" + production_date + suffix + "_MBD_pt_l3_15mrad.csv";
+  std::string input_csv_mbd_15mrad_eta_ratios_eta_name = path_to_csv_ratios + "/eta_ratios_" + production_date + suffix + "_MBD_pt_l4_15mrad.csv";
+  std::string input_csv_mbd_15mrad_xf_ratios_pi0_name = path_to_csv_ratios + "/xf_ratios_" + production_date + suffix + "_MBD_pt_l3_15mrad.csv";
+  std::string input_csv_mbd_15mrad_xf_ratios_eta_name = path_to_csv_ratios + "/xf_ratios_" + production_date + suffix + "_MBD_pt_l4_15mrad.csv";
 
-  std::string input_csv_photon_15mrad_pt_pi0_name = path_to_csv_mean + "/input_pt_mean_01312026" + suffix + "_efficiency_30_pt_g3_15mrad.csv";
-  std::string input_csv_photon_15mrad_pt_eta_name = path_to_csv_mean + "/input_pt_mean_01312026" + suffix + "_efficiency_30_pt_g4_15mrad.csv";
-  std::string input_csv_photon_15mrad_eta_pi0_name = path_to_csv_mean + "/input_eta_mean_01312026" + suffix + "_efficiency_30_pt_g3_15mrad.csv";
-  std::string input_csv_photon_15mrad_eta_eta_name = path_to_csv_mean + "/input_eta_mean_01312026" + suffix + "_efficiency_30_pt_g4_15mrad.csv";
-  std::string input_csv_photon_15mrad_xf_pi0_name = path_to_csv_mean + "/input_xf_mean_01312026" + suffix + "_efficiency_30_pt_g3_15mrad.csv";
-  std::string input_csv_photon_15mrad_xf_eta_name = path_to_csv_mean + "/input_xf_mean_01312026" + suffix + "_efficiency_30_pt_g4_15mrad.csv";
-  std::string input_csv_photon_15mrad_pt_ratios_pi0_name = path_to_csv_ratios + "/pt_ratios_01312026" + suffix + "_efficiency_30_pt_g3_15mrad.csv";
-  std::string input_csv_photon_15mrad_pt_ratios_eta_name = path_to_csv_ratios + "/pt_ratios_01312026" + suffix + "_efficiency_30_pt_g4_15mrad.csv";
-  std::string input_csv_photon_15mrad_eta_ratios_pi0_name = path_to_csv_ratios + "/eta_ratios_01312026" + suffix + "_efficiency_30_pt_g3_15mrad.csv";
-  std::string input_csv_photon_15mrad_eta_ratios_eta_name = path_to_csv_ratios + "/eta_ratios_01312026" + suffix + "_efficiency_30_pt_g4_15mrad.csv";
-  std::string input_csv_photon_15mrad_xf_ratios_pi0_name = path_to_csv_ratios + "/xf_ratios_01312026" + suffix + "_efficiency_30_pt_g3_15mrad.csv";
-  std::string input_csv_photon_15mrad_xf_ratios_eta_name = path_to_csv_ratios + "/xf_ratios_01312026" + suffix + "_efficiency_30_pt_g4_15mrad.csv";
+  std::string input_csv_photon_15mrad_pt_pi0_name = path_to_csv_mean + "/input_pt_mean_" + production_date + suffix + "_efficiency_30_pt_g3_15mrad.csv";
+  std::string input_csv_photon_15mrad_pt_eta_name = path_to_csv_mean + "/input_pt_mean_" + production_date + suffix + "_efficiency_30_pt_g4_15mrad.csv";
+  std::string input_csv_photon_15mrad_eta_pi0_name = path_to_csv_mean + "/input_eta_mean_" + production_date + suffix + "_efficiency_30_pt_g3_15mrad.csv";
+  std::string input_csv_photon_15mrad_eta_eta_name = path_to_csv_mean + "/input_eta_mean_" + production_date + suffix + "_efficiency_30_pt_g4_15mrad.csv";
+  std::string input_csv_photon_15mrad_xf_pi0_name = path_to_csv_mean + "/input_xf_mean_" + production_date + suffix + "_efficiency_30_pt_g3_15mrad.csv";
+  std::string input_csv_photon_15mrad_xf_eta_name = path_to_csv_mean + "/input_xf_mean_" + production_date + suffix + "_efficiency_30_pt_g4_15mrad.csv";
+  std::string input_csv_photon_15mrad_pt_ratios_pi0_name = path_to_csv_ratios + "/pt_ratios_" + production_date + suffix + "_efficiency_30_pt_g3_15mrad.csv";
+  std::string input_csv_photon_15mrad_pt_ratios_eta_name = path_to_csv_ratios + "/pt_ratios_" + production_date + suffix + "_efficiency_30_pt_g4_15mrad.csv";
+  std::string input_csv_photon_15mrad_eta_ratios_pi0_name = path_to_csv_ratios + "/eta_ratios_" + production_date + suffix + "_efficiency_30_pt_g3_15mrad.csv";
+  std::string input_csv_photon_15mrad_eta_ratios_eta_name = path_to_csv_ratios + "/eta_ratios_" + production_date + suffix + "_efficiency_30_pt_g4_15mrad.csv";
+  std::string input_csv_photon_15mrad_xf_ratios_pi0_name = path_to_csv_ratios + "/xf_ratios_" + production_date + suffix + "_efficiency_30_pt_g3_15mrad.csv";
+  std::string input_csv_photon_15mrad_xf_ratios_eta_name = path_to_csv_ratios + "/xf_ratios_" + production_date + suffix + "_efficiency_30_pt_g4_15mrad.csv";
 
   int nIterations = (shuffleIterMax - shuffleIterMin + 1);
   int nStore = nIterations / shuffleMaxStorage;
