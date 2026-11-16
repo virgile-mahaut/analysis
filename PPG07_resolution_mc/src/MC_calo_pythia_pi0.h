@@ -68,7 +68,9 @@ class MC_calo_pythia_pi0 : public SubsysReco
 
   void smear_photon(float& eta, float& phi, float& ecore, int smear_idx);
 
-  void smear_ultra(float& ecore);
+  void smear_photon_adhoc(float& energy);
+
+  void smear_photon_vs_pt(const int iPt, float& energy);
 
   void set_smearing(bool val, bool val_ecore = true, bool val_eta = true, bool val_phi = true)
   {
@@ -78,9 +80,10 @@ class MC_calo_pythia_pi0 : public SubsysReco
     do_smear_phi = val_phi;
   }
 
-  void set_ultra_smearing(bool val)
+  void set_adhoc_smearing(bool val, float smear_level = 0)
   {
-    do_ultra_smearing = val; 
+    do_adhoc_smearing = val;
+    adhoc_energy_res = smear_level;
   }
 
   //! Check diphoton cut
@@ -354,10 +357,11 @@ class MC_calo_pythia_pi0 : public SubsysReco
   TRandom3 *rnd = nullptr;
 
   int _smear_index = 2;
-  bool do_ultra_smearing = false;
-  TF1 *f_energy_ultra = nullptr;
+  // 0 -> global min,
+  // 1 -> cE_0p08 (wide),
+  // 2 -> cE_0p05 (nominal)
   
-  //! Quadrature diff graphs from function_compare_wide.root; x = E (GeV), Eval = width for smearing)
+  // Quadrature diff graphs from function_compare_wide.root; x = E (GeV), Eval = width for smearing)
   static constexpr int nDifferences = 3;
   std::array<TF1*, nDifferences> f_energy_smear{};
   std::array<TF1*, nDifferences> f_position_smear{};
@@ -399,6 +403,11 @@ class MC_calo_pythia_pi0 : public SubsysReco
     -M_PI, -5.0 * M_PI / 6.0, -2.0 * M_PI / 3.0, -M_PI / 2.0, -M_PI / 3.0, -M_PI / 6.0,
     0, M_PI / 6.0, M_PI / 3.0, M_PI / 2.0, 2.0 * M_PI / 3.0, 5.0 * M_PI / 6.0, M_PI
   };
+
+  // Ad-hoc extra smearing at low values of pT
+  bool do_adhoc_smearing = false;
+  float adhoc_energy_res = 0.0;
+  const float extra_smear_vs_pt[nPtBins] = {0.061, 0.042, 0.12, 0.0, 0.0, 0.0, 0.0, 0.0};
 
   //2D -> 1D mapping for two-dimensional response matrices
 

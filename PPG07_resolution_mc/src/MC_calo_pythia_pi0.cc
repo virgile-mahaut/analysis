@@ -34,13 +34,6 @@ int MC_calo_pythia_pi0::Init(PHCompositeNode * /*topNode*/)
   }
 
   rnd = new TRandom3(seednumber);
-
-  if (do_ultra_smearing)
-  {
-    // Very large second term
-    f_energy_ultra = new TF1("f_energy_ultra", "sqrt([0]/x*[0]/x)", 0.1, 20);
-    f_energy_ultra->SetParameter(0, 0.61);
-  }
   
   // From Blair pi0EtaByEta
   if (do_smearing)
@@ -393,8 +386,13 @@ int MC_calo_pythia_pi0::process_event(PHCompositeNode * /*topNode*/)
       float E_nominal = clus_E;
       smear_photon(clus_eta, clus_phi, clus_E, _smear_index); // cEp05
 
-      if (do_ultra_smearing) {
-        smear_ultra(clus_E);
+      // Ad hoc energy smearing derived from study in sigma_data / sigma_MC
+      // as a function of pT
+      //int iPt = FindBinBinary(clus_E / cosh(clus_eta), pTBins, nPtBins + 1);
+      if (do_adhoc_smearing)
+      {
+        smear_photon_adhoc(clus_E);
+        //smear_photon_vs_pt(iPt, clus_E);
       }
 
       if (Verbosity() > VERBOSITY_MORE) {
@@ -729,7 +727,7 @@ void MC_calo_pythia_pi0::book_histograms()
       ";#Delta#eta; Counts / [0.0005]",
       100, -0.025, 0.025);
     h_reco_true_xf[iType] = new TH1F(
-      ("h_reco_true_" + type_suffix[iType] + "_xf_").c_str(),
+      ("h_reco_true_" + type_suffix[iType] + "_xf").c_str(),
       ";#Deltax_{F}; Counts / [0.00005]",
       100, -0.0025, 0.0025);
     h_reco_true_phi[iType] = new TH1F(
@@ -749,7 +747,7 @@ void MC_calo_pythia_pi0::book_histograms()
       nEtaBins, etaBins,
       nEtaBins, etaBins);
     h_response_xf[iType] = new TH2F(
-      ("h_response_" + type_suffix[iType] + "_xf_").c_str(),
+      ("h_response_" + type_suffix[iType] + "_xf").c_str(),
       ";x_{F,Reco}; x_{F,True}",
       nXfBins, xfBins,
       nXfBins, xfBins);
@@ -770,7 +768,7 @@ void MC_calo_pythia_pi0::book_histograms()
       200, -2.0, 2.0,
       200, -2.0, 2.0);
     h_response_fine_xf[iType] = new TH2F(
-      ("h_response_fine_" + type_suffix[iType] + "_xf_").c_str(),
+      ("h_response_fine_" + type_suffix[iType] + "_xf").c_str(),
       ";x_{F,Reco}; x_{F,True}",
       200, -0.2, 0.2,
       200, -0.2, 0.2);
@@ -857,7 +855,7 @@ void MC_calo_pythia_pi0::book_histograms()
       ";#eta_{Reco}; Count",
       nEtaBins, etaBins);
     h_true_coarse_xf[iType] = new TH1F(
-      ("h_true_coarse_" + type_suffix[iType] + "_xf_").c_str(),
+      ("h_true_coarse_" + type_suffix[iType] + "_xf").c_str(),
       ";x_{FReco}; Count",
       nXfBins, xfBins);
     h_true_coarse_phi[iType] = new TH1F(
@@ -886,7 +884,7 @@ void MC_calo_pythia_pi0::book_histograms()
       ";#eta_{Reco}; Count",
       nEtaBins, etaBins);
     h_reco_coarse_xf[iType] = new TH1F(
-      ("h_reco_coarse_" + type_suffix[iType] + "_xf_").c_str(),
+      ("h_reco_coarse_" + type_suffix[iType] + "_xf").c_str(),
       ";x_{FReco}; Count",
       nXfBins, xfBins);
     h_reco_coarse_phi[iType] = new TH1F(
@@ -1582,18 +1580,6 @@ void MC_calo_pythia_pi0::match_truth_index(std::vector<customCluster>& reco_clus
   }
 }
 
-void MC_calo_pythia_pi0::smear_ultra(float& ecore)
-{
-  if (!f_energy_ultra) {
-    std::cerr << "Error: f_energy_ultra not defined" << std::endl;
-    return;
-  }
-
-  const double E_res = f_energy_ultra->Eval(ecore);
-  float smeared_energy = std::max(0.0, rnd->Gaus(ecore, ecore * E_res));
-  ecore = smeared_energy;
-}
-
 void MC_calo_pythia_pi0::smear_photon(float& eta,
                                       float& phi,
                                       float& ecore,
@@ -1621,12 +1607,31 @@ void MC_calo_pythia_pi0::smear_photon(float& eta,
   WrapAngle(smeared_phi);
   float smeared_eta = rnd->Gaus(eta, P_res);
 
-  if (do_smear_eta) 
+  if (do_smear_eta)
     eta = smeared_eta;
   if (do_smear_phi)
     phi = smeared_phi;
   if (do_smear_ecore)
     ecore = smeared_energy;
+}
+
+void MC_calo_pythia_pi0::smear_photon_adhoc(float& energy)
+{
+  float smeared_energy = std::max(0.0, rnd->Gaus(energy, energy * adhoc_energy_res));
+
+  energy = smeared_energy;
+}
+
+void MC_calo_pythia_pi0::smear_photon_vs_pt(const int iPt,
+                                            float& energy)
+{
+  if (iPt < 0 || iPt > nPtBins)
+  {
+    return;
+  }
+  
+  float smeared_energy = std::max(0.0, rnd->Gaus(energy, extra_smear_vs_pt[iPt]));
+  energy = smeared_energy;
 }
 
 void MC_calo_pythia_pi0::WrapAngle(float& phi)
